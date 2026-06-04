@@ -13,3 +13,7 @@ build/
 htmlcov/
 .coverage
 .uv-cache/
+
+# User-level IDE / agent workflow artifacts (not part of the project source)
+.atl/
+.windsurf/
