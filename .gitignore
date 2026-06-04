@@ -1,0 +1,19 @@
+# Python — virtualenv, caches, bytecode, build, coverage, packaging
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.uv-cache/
+
+# User-level IDE / agent workflow artifacts (not part of the project source)
+.atl/
+.windsurf/

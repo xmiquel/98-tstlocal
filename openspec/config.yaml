@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Project: 98-tstlocal (greenfield partial)
+  Stack: none yet — no source code, no test runner, no linter, no CI
+  Architecture: TBD (sdd-explore). User intent: FastAPI backend + frontend TBD for trading strategy creation/backtesting/tracking
+  Testing: none detected. Strict TDD disabled until a test runner is added
+  Style: TBD
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns (none yet — establish patterns in sdd-explore)
+    tdd: true
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
