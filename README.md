@@ -1,5 +1,7 @@
 # 98-tstlocal
 
+[![CI](https://github.com/xmiquel/98-tstlocal/actions/workflows/ci.yml/badge.svg)](https://github.com/xmiquel/98-tstlocal/actions/workflows/ci.yml)
+
 FastAPI web app for trading strategy creation, backtesting, and tracking.
 
 ## Status
