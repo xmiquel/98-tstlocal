@@ -1,0 +1,20 @@
+# GitHub Dependabot configuration for 98-tstlocal
+# Spec: openspec/changes/dev-tooling/specs/python-toolchain/spec.md (Dependabot requirement)
+# Resolves Node 20 deprecation warning flagged in sdd/ci-quality-gate/verify-report (id #22).
+# Auto-merge on CI green requires: gh repo edit --enable-auto-merge (one-time USER setup).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-deps:
+        patterns: ["*"]
