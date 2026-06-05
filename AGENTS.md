@@ -37,7 +37,11 @@ target is **Windows** (MetaTrader 5 integration is planned; see
 
 - **Conventional Commits**: `chore(...)`, `feat(...)`, `fix(...)`, `docs(...)`, etc.
   See recent commits on `main` for the types in use.
-- **No AI attribution**: never add `Co-Authored-By` trailers or AI mentions to commits.
+- **No AI attribution**: never add `Co-Authored-By` trailers or AI mentions to
+  commits. Project automation identities — `dependabot[bot]`, `sdd-bootstrap` (the
+  project's SDD skill, runs in an automated context) — are tooling, not LLM
+  co-authors, and may appear in commit trailers when added by git/GitHub during
+  squash-merge.
 - **`uv run <tool>`**: never call tools directly; always go through `uv run` so the
   right version is used.
 - **Strict TDD**: tests before code; coverage >= 80%; local re-run of `make ci` after
