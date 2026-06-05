@@ -126,11 +126,14 @@ Notes:
 +]
 ```
 
-Both pins are `~=` (compatible release). `~=0.116` means `>=0.116, <0.117`
-(only patch updates); `~=0.27` means `>=0.27, <0.28`. This matches the
-existing dev-dep convention (`pytest~=9.0`, `mypy~=2.1.0`, etc.) and keeps
-Dependabot's weekly batches to patch-only bumps that auto-merge on CI
-green.
+Both pins are `~=` (compatible release). Per PEP 440, a 2-component
+`~=X.Y` resolves to `>=X.Y, <(X+1).0` — so `~=0.116` is `>=0.116, <1.0`
+and `~=0.27` is `>=0.27, <1.0`. For pre-1.0 packages, that makes the
+`~=` pin a "no accidental 1.0" guard rather than a patch-only clamp.
+This matches the existing dev-dep convention (`pytest~=9.0`, `mypy~=2.1.0`,
+etc.) where the pin is a major-line fence. Dependabot's weekly batches
+propose the latest version within the pinned range; auto-merge on
+`Quality Gate` green handles them.
 
 Both go in `[project] dependencies` (runtime), **not** in
 `[dependency-groups].dev` (dev-only). `fastapi` is the runtime framework
@@ -196,7 +199,7 @@ The `dependencies` and `dependencies-dev` jobs in CI are unaffected
 | `httpx 0.27` emits a `DeprecationWarning` on `TestClient(app)` construction | Med | Cosmetic, not a test failure; documented in `proposal.md` and `spec.md` non-goals. AGENTS.md follow-up only if it starts showing up under `pytest -W error`. Pin `~=0.28` only if the warning becomes noisy. |
 | `uv.lock` not committed in the same work unit as `pyproject.toml` → `uv lock --check` fails | Low | Work-unit precedent from `dev-tooling`; apply runs `uv lock --check` locally before push. Commit 1 of the plan above bundles them. |
 | `mypy --strict` chokes on a FastAPI annotation | Low | FastAPI 0.116+ uses `Annotated[...]` internally; user-visible code in this slice uses bare `dict[str, str]` and `None`, which mypy handles. Fallback: add `pydantic.mypy` plugin to `[tool.mypy]`. |
-| First Dependabot batch opens PRs for `fastapi` and `httpx` within a week of merge | Low (expected) | `~=` pins keep bumps patch-only; auto-merge on `Quality Gate` green. No manual triage needed. |
+| First Dependabot batch opens PRs for `fastapi` and `httpx` within a week of merge | Low (expected) | `~=` is a major-line fence (per PEP 440: `~=0.116` = `>=0.116, <1.0`); Dependabot proposes the latest within the range, not patch-only. Auto-merge on `Quality Gate` green handles them; no manual triage needed. |
 | Pre-commit hooks catch a real issue on the new files | Low | Hooks exist for this reason (ruff-pre-commit v0.6.9, ruff-format, local mypy). Fix and amend. |
 | `tests/test_health.py` shadows the `app` symbol locally | Low | The `app` in `TestClient(app)` is the imported FastAPI instance; the function param shadowing only happens inside the test function and does not collide. |
 
