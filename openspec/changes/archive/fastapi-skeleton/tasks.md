@@ -77,11 +77,41 @@ Chain strategy: stacked-to-main
 
 Apply MUST run all from repo root, all exit 0, before push:
 
-- [ ] `uv run pytest` — passes; coverage on `app/` >= 80%
-- [ ] `uv run ruff check .` — lint clean (S101 ignored in `tests/**`)
-- [ ] `uv run ruff format --check .` — format clean
-- [ ] `uv run mypy .` — strict type check clean
-- [ ] `uv lock --check` — lockfile matches (binding CI step)
-- [ ] `make ci` — aggregates the 6 local commands
+- [x] `uv run pytest` — passes; coverage on `app/` >= 80%
+- [x] `uv run ruff check .` — lint clean (S101 ignored in `tests/**`)
+- [x] `uv run ruff format --check .` — format clean
+- [x] `uv run mypy .` — strict type check clean
+- [x] `uv lock --check` — lockfile matches (binding CI step)
+- [x] `make ci` — aggregates the 6 local commands
 
 PowerShell `RemoteException` banners on `uv` are terminal artifacts; trust the exit code.
+
+## Archive-Time Reconciliation Note (sdd-archive, 2026-06-06)
+
+The 4 implementation tasks (1-4) above are tracked as "DONE" in the
+`sdd/fastapi-skeleton/tasks` Engram observation (topic_key=`sdd/fastapi-skeleton/tasks`,
+scope=`project`, id #38) with per-task binding SHAs
+(`58855f2`, `7641cad`, `8c4c013`, `741714b`) and pre-squash RED-before-GREEN
+preserved on branch ref `45dfac9`. The on-disk `tasks.md` tracks them as
+bullet-list acceptance criteria (no `- [ ]` checkboxes) — that is the
+format `sdd-tasks` produced. They are therefore not "stale unchecked
+tasks" per the SKILL.md § Task Completion Gate.
+
+The 6 Pre-Apply Checks above were `- [ ]` on disk at archive time.
+This archive phase mechanically marks all 6 as `- [x]` as an exceptional
+reconciliation under the SKILL.md § Task Completion Gate, with proof
+anchored in:
+
+- **Apply evidence** (Engram #39 `sdd/fastapi-skeleton/apply-progress`): 4/4
+  implementation tasks complete with the binding pre-squash SHAs, all 6
+  local quality commands exit 0, 4/4 binding TDD categories PASS.
+- **Verify evidence** (Engram #42 `sdd/fastapi-skeleton/verify-report`):
+  re-run of the 6 quality commands on post-merge `main` shows all exit 0;
+  CI run #27043793242 SUCCESS in 34s; 7/7 spec scenarios compliant.
+- **Git state**: working tree clean; `main` HEAD at `60dd36f` with
+  squash-merges `007a1a3` (feature, PR #14) and `eb767d1` (PEP 440 fix,
+  PR #16) and `60dd36f` (AGENTS.md clarification, PR #18).
+
+This is purely a checkbox-state correction at archive time. No
+re-apply or re-verify was performed. The reconcile mirrors the
+dev-tooling archive precedent (PR #12, commit `db414dc`).
