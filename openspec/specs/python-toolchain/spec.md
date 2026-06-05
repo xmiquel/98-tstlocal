@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `python-toolchain` capability installs a strict Python development environment for the upcoming FastAPI trading app. Pinning Python 3.12, committing `uv.lock`, and configuring pytest (80% coverage gate), ruff (with security rules), and mypy `--strict` from day one lets every later change inherit TDD, lint, and type safety as a foundation. The capability flips `openspec/config.yaml` `apply.tdd` to `true` and switches `.gga` to Python mode, unlocking RED→GREEN→REFACTOR. The CI quality contract established in `ci-quality-gate` enforces this contract on every pull request, so the rules captured here are no longer local-only. The dev-tooling cycle landed local pre-commit hooks (`ruff format`, `ruff check --fix`, `mypy`) for fast feedback, a `Makefile` wrapping the test runner and the full quality chain in the same order as the CI workflow, Dependabot auto-updates for GitHub Actions and `pyproject.toml` dev-deps, an `AGENTS.md` for future AI/agents, and tightened dev-dep pins from `>=` to `~=` so breaking bumps are blocked while patches flow through. This change ships zero application code.
+The `python-toolchain` capability installs a strict Python development environment for the upcoming FastAPI trading app. Pinning Python 3.12, committing `uv.lock`, and configuring pytest (80% coverage gate), ruff (with security rules), and mypy `--strict` from day one lets every later change inherit TDD, lint, and type safety as a foundation. The capability flips `openspec/config.yaml` `apply.tdd` to `true` and switches `.gga` to Python mode, unlocking RED→GREEN→REFACTOR. The CI quality contract established in `ci-quality-gate` enforces this contract on every pull request, so the rules captured here are no longer local-only. The dev-tooling cycle landed local pre-commit hooks (`ruff format`, `ruff check --fix`, `mypy`) for fast feedback, a `Makefile` wrapping the test runner and the full quality chain in the same order as the CI workflow, Dependabot auto-updates for GitHub Actions and `pyproject.toml` dev-deps, an `AGENTS.md` for future AI/agents, and tightened dev-dep pins from `>=` to `~=` so breaking bumps are blocked while patches flow through. The fastapi-skeleton cycle landed the first real application code — a minimal `app/main.py` FastAPI surface with a `GET /health` route, a `TestClient` contract test in `tests/test_health.py`, and `fastapi~=0.116` + `httpx~=0.27` as runtime dependencies (no `uvicorn` yet) — turning the 80% coverage gate from vacuous (100% of 0 statements) into a real signal and exercising the strict TDD unlock on a real feature for the first time.
 
 ## ADDED Requirements
 
@@ -270,6 +270,54 @@ The project SHALL ship an `AGENTS.md` at the repo root providing project context
 - GIVEN `AGENTS.md` exists
 - WHEN a developer reads the first 5 lines
 - THEN there is a comment or note referencing `openspec/changes/dev-tooling/specs/python-toolchain/spec.md`
+
+### Requirement: Application Runtime
+
+The project SHALL ship a minimal FastAPI surface that proves the runtime-dep toolchain works end-to-end. The application SHALL be a module-level `FastAPI` instance (not a factory) exposed from `app.main` under the name `app`, annotated `app: FastAPI = FastAPI()` so the declaration passes `mypy --strict` -- the simplest pattern for a single-process skeleton. The instance SHALL expose exactly one endpoint: `GET /health`, returning HTTP 200 with a JSON body equal to `{"status": "ok"}`. The endpoint SHALL NOT require authentication, a database connection, or any startup state. The project SHALL ship `tests/test_health.py` that drives the endpoint with `from fastapi.testclient import TestClient` and asserts on the response status code and the JSON body. The runtime dependencies `fastapi` and `httpx` SHALL be declared in `pyproject.toml` under `[project] dependencies` using `~=`, with `~=0.116` and `~=0.27` as the locked minor lines. `uvicorn` SHALL NOT be a runtime dependency in this slice. The apply phase SHALL follow strict TDD: the test commit lands before the implementation commit that makes it pass.
+
+> Satisfies: first real app code; minimal FastAPI surface; TestClient contract test; `~=` runtime pins; explicit `uvicorn` deferral; RED-before-GREEN.
+
+#### Scenario: FastAPI instance is importable from `app.main`
+
+- GIVEN `pyproject.toml` declares `fastapi~=0.116` and `httpx~=0.27` in `[project] dependencies`
+- WHEN a developer runs `python -c "import app.main; from fastapi import FastAPI; assert isinstance(app.main.app, FastAPI)"`
+- THEN the import succeeds and the symbol is a `FastAPI` instance
+
+#### Scenario: `GET /health` returns 200 with the documented body
+
+- GIVEN a `FastAPI` instance with a `GET /health` route returning `{"status": "ok"}`
+- WHEN a `TestClient` issues a `GET /health` request
+- THEN the response status code is 200 AND the JSON body equals `{"status": "ok"}`
+
+#### Scenario: `/health` has no auth, database, or persistence dependencies
+
+- GIVEN the application exposes `GET /health` and registers no auth middleware, database connection, or persistence layer
+- WHEN a `TestClient` issues an unauthenticated `GET /health` request
+- THEN the response status code is 200 (auth, DB, and persistence are explicitly deferred)
+
+#### Scenario: TestClient test file exercises the `/health` contract
+
+- GIVEN `tests/test_health.py` exists and imports `from fastapi.testclient import TestClient`
+- WHEN a developer runs `uv run pytest tests/test_health.py`
+- THEN the suite passes with at least one assertion on the `/health` status code and JSON body
+
+#### Scenario: Runtime dependencies are declared with `~=` pins
+
+- GIVEN the slice's `pyproject.toml`
+- WHEN a developer inspects `[project] dependencies`
+- THEN the list contains exactly `fastapi~=0.116` and `httpx~=0.27` AND `uv lock` resolves without constraint errors
+
+#### Scenario: `uvicorn` is not a runtime dependency yet
+
+- GIVEN the slice's `pyproject.toml`
+- WHEN a developer inspects `[project] dependencies`
+- THEN `uvicorn` is NOT in the list (deferred to a future slice that adds a run target or a runnable endpoint)
+
+#### Scenario: Strict TDD -- test commit precedes implementation commit
+
+- GIVEN the apply phase produces a work-unit sequence for this slice
+- WHEN `git log --oneline` is run on the feature branch
+- THEN a `test(health):` commit appears before the corresponding `feat(health):` commit
 
 ## MODIFIED Requirements
 
