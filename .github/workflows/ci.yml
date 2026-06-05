@@ -1,0 +1,72 @@
+# GitHub Actions: Quality Gate
+#
+# Enforces the python-toolchain quality contract on every push to main, every
+# pull request targeting main, and on manual workflow_dispatch.
+#
+# Spec: openspec/changes/ci-quality-gate/specs/python-toolchain/spec.md
+#       (Requirement: Continuous Integration Workflow)
+#
+# Runner choice: windows-latest is intentional (MT5 alignment; see
+# openspec/changes/ci-quality-gate/proposal.md -> Risks).
+#
+# Shell: pwsh (PowerShell 7). On windows-latest, pwsh is the default shell for
+# the last several years, but we set it explicitly so the workflow is robust to
+# any future default change. PowerShell 5.1 is NOT used.
+#
+# PowerShell RemoteException banner noise on `uv` commands is a known Windows
+# terminal artifact; the action's exit code is the source of truth.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel in-progress runs for the same ref; cheaper iterations during PR review.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync dependencies
+        shell: pwsh
+        run: uv sync
+
+      - name: Lint with ruff
+        shell: pwsh
+        run: uv run ruff check .
+
+      - name: Check formatting with ruff
+        shell: pwsh
+        run: uv run ruff format --check .
+
+      - name: Type check with mypy
+        shell: pwsh
+        run: uv run mypy .
+
+      - name: Run tests with pytest
+        shell: pwsh
+        run: uv run pytest
+
+      - name: Check lockfile
+        shell: pwsh
+        run: uv lock --check
