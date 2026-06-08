@@ -28,7 +28,13 @@ def test_env_override_partial() -> None:
 
 def test_env_override_all() -> None:
     """Settings(...) with all keyword arguments overrides every field."""
-    settings = Settings(APP_NAME="custom-app", DEBUG=True, HOST="127.0.0.1", PORT=9000, DATABASE_URL="sqlite:///./custom.db")
+    settings = Settings(
+        APP_NAME="custom-app",
+        DEBUG=True,
+        HOST="127.0.0.1",
+        PORT=9000,
+        DATABASE_URL="sqlite:///./custom.db",
+    )
     assert settings.APP_NAME == "custom-app"
     assert settings.DEBUG is True
     assert settings.HOST == "127.0.0.1"
