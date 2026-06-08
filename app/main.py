@@ -1,12 +1,13 @@
-"""Minimal FastAPI application for the 98-tstlocal trading app skeleton.
+"""FastAPI application for the 98-tstlocal trading app.
 
-The full app (strategies, backtest, MT5 connector) lands in subsequent
-changes. This module exists today so the runtime-dep toolchain can be
-exercised end-to-end on a real feature: a single GET /health route that
-returns a fixed status payload, exercised by tests/test_health.py.
+Provides health-check and trading strategy CRUD endpoints backed by an
+in-memory store. Routes are registered on a module-level FastAPI instance.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+
+from app.schemas import StrategyCreate
+from app.store import store
 
 app: FastAPI = FastAPI()
 
@@ -15,3 +16,33 @@ app: FastAPI = FastAPI()
 def health() -> dict[str, str]:
     """Health-check endpoint; returns a fixed status payload."""
     return {"status": "ok"}
+
+
+@app.get("/strategies")
+def list_strategies() -> list[dict[str, object]]:
+    """Return all strategies as a list of dictionaries."""
+    return [s.model_dump() for s in store.list()]
+
+
+@app.post("/strategies", status_code=201)
+def create_strategy(payload: StrategyCreate) -> dict[str, object]:
+    """Create a new strategy from the given payload."""
+    strategy = store.create(payload)
+    return strategy.model_dump()
+
+
+@app.get("/strategies/{strategy_id}")
+def get_strategy(strategy_id: str) -> dict[str, object]:
+    """Return a strategy by id, or 404 if not found."""
+    strategy = store.get(strategy_id)
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return strategy.model_dump()
+
+
+@app.delete("/strategies/{strategy_id}", status_code=204)
+def delete_strategy(strategy_id: str) -> None:
+    """Delete a strategy by id, or 404 if not found."""
+    deleted = store.delete(strategy_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Strategy not found")
