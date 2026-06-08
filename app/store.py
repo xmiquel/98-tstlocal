@@ -30,14 +30,17 @@ class StrategyStore:
         self._engine = create_engine(db_url, echo=False)
         self._session_factory = sessionmaker(self._engine)
 
-    def list(self) -> list[Strategy]:
-        """Return all strategies ordered by creation time."""
+    def list(self, name_filter: str | None = None) -> list[Strategy]:
+        """Return all strategies ordered by creation time.
+
+        When *name_filter* is provided, filter results to strategies whose
+        name contains the given value (case-insensitive).
+        """
         with self._session_factory() as session:
-            rows = (
-                session.execute(select(StrategyModel).order_by(StrategyModel.created_at))
-                .scalars()
-                .all()
-            )
+            stmt = select(StrategyModel).order_by(StrategyModel.created_at)
+            if name_filter is not None:
+                stmt = stmt.where(StrategyModel.name.ilike(f"%{name_filter}%"))
+            rows = session.execute(stmt).scalars().all()
             return [self._to_schema(r) for r in rows]
 
     def create(self, data: StrategyCreate) -> Strategy:

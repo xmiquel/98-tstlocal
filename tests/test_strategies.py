@@ -84,6 +84,7 @@ def test_delete_strategy_returns_404() -> None:
     response = client.delete("/strategies/non-existent-id")
     assert response.status_code == 404
 
+
 # ── Strategy Name Filter ──────────────────────────────────────────────────
 
 
