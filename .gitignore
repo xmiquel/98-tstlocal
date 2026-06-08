@@ -19,5 +19,9 @@ htmlcov/
 .atl/
 .windsurf/
 
+# SQLite database files
+*.db
+data/
+
 # Environment — local overrides (never committed)
 .env
