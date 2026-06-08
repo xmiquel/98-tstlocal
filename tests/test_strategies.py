@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas import StrategyCreate, StrategyUpdate
 from app.store import store
 
 client = TestClient(app)
@@ -88,3 +89,44 @@ def test_delete_strategy_returns_404() -> None:
     """DELETE /strategies/{id} returns 404 for a non-existent id."""
     response = client.delete("/strategies/non-existent-id")
     assert response.status_code == 404
+
+
+# ── Strategy Update ──────────────────────────────────────────────────────────
+
+
+def test_update_strategy() -> None:
+    """POST creates, PUT updates name, GET confirms the update persists."""
+    create_resp = client.post("/strategies", json={"name": "Original"})
+    strategy_id = create_resp.json()["id"]
+    update_resp = client.put(
+        f"/strategies/{strategy_id}", json={"name": "Updated Name"}
+    )
+    assert update_resp.status_code == 200
+    data = update_resp.json()
+    assert data["name"] == "Updated Name"
+    assert data["id"] == strategy_id
+    get_resp = client.get(f"/strategies/{strategy_id}")
+    assert get_resp.json()["name"] == "Updated Name"
+
+
+def test_update_strategy_not_found() -> None:
+    """PUT /strategies/{non-existent-id} returns 404."""
+    response = client.put(
+        "/strategies/non-existent-id", json={"name": "Ghost"}
+    )
+    assert response.status_code == 404
+
+
+def test_store_update_returns_updated_strategy() -> None:
+    """store.update returns the updated Strategy object with same id/created_at."""
+    strat = store.create(StrategyCreate(name="Original"))
+    updated = store.update(strat.id, StrategyUpdate(name="Updated"))
+    assert updated.name == "Updated"
+    assert updated.id == strat.id
+    assert updated.created_at == strat.created_at
+
+
+def test_store_update_missing_raises_key_error() -> None:
+    """store.update on a missing id raises KeyError."""
+    with pytest.raises(KeyError):
+        store.update("non-existent-id", StrategyUpdate(name="Ghost"))
