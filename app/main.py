@@ -8,7 +8,7 @@ FastAPI instance with a lifespan handler for database bootstrap.
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 
 from app.database import Base
 from app.schemas import StrategyCreate, StrategyUpdate
@@ -37,9 +37,9 @@ def health() -> dict[str, str]:
 
 
 @app.get("/strategies")
-def list_strategies() -> list[dict[str, object]]:
-    """Return all strategies as a list of dictionaries."""
-    return [s.model_dump() for s in store.list()]
+def list_strategies(name: str | None = Query(None)) -> list[dict[str, object]]:
+    """Return all strategies, optionally filtered by name (case-insensitive)."""
+    return [s.model_dump() for s in store.list(name_filter=name)]
 
 
 @app.post("/strategies", status_code=201)
