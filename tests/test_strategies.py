@@ -130,3 +130,16 @@ def test_store_update_missing_raises_key_error() -> None:
     """store.update on a missing id raises KeyError."""
     with pytest.raises(KeyError):
         store.update("non-existent-id", StrategyUpdate(name="Ghost"))
+
+
+def test_store_update_with_description() -> None:
+    """store.update handles optional description field (triangulation)."""
+    strat = store.create(StrategyCreate(name="Original"))
+    updated = store.update(
+        strat.id,
+        StrategyUpdate(name="Updated", description="Triangulated description"),
+    )
+    assert updated.name == "Updated"
+    assert updated.description == "Triangulated description"
+    assert updated.id == strat.id
+    assert updated.created_at == strat.created_at

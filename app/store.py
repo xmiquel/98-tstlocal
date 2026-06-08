@@ -5,7 +5,7 @@ operations backed by an in-memory dict. A module-level singleton `store`
 is available for convenient import by route handlers and tests.
 """
 
-from app.schemas import Strategy, StrategyCreate
+from app.schemas import Strategy, StrategyCreate, StrategyUpdate
 
 
 class StrategyStore:
@@ -30,6 +30,25 @@ class StrategyStore:
     def get(self, strategy_id: str) -> Strategy | None:
         """Retrieve a strategy by id, or None if not found."""
         return self._strategies.get(strategy_id)
+
+    def update(self, strategy_id: str, data: StrategyUpdate) -> Strategy:
+        """Update an existing strategy in-place.
+
+        Raises KeyError if strategy_id does not exist.
+        Returns the updated Strategy object.
+        """
+        if strategy_id not in self._strategies:
+            msg = f"Strategy {strategy_id!r} not found"
+            raise KeyError(msg)
+        existing = self._strategies[strategy_id]
+        updated = Strategy(
+            id=existing.id,
+            created_at=existing.created_at,
+            name=data.name,
+            description=data.description,
+        )
+        self._strategies[strategy_id] = updated
+        return updated
 
     def delete(self, strategy_id: str) -> bool:
         """Delete a strategy by id.

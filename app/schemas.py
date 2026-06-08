@@ -22,6 +22,17 @@ class StrategyCreate(BaseModel):
     description: str | None = None
 
 
+class StrategyUpdate(BaseModel):
+    """Input model for updating an existing trading strategy.
+
+    Structurally identical to StrategyCreate today, but separated to
+    signal semantic intent and allow future divergence (e.g. PATCH).
+    """
+
+    name: str
+    description: str | None = None
+
+
 class Strategy(StrategyCreate):
     """Domain model representing a trading strategy with identity."""
 
