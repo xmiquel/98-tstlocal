@@ -2,7 +2,11 @@
 # Spec: openspec/changes/dev-tooling/specs/python-toolchain/spec.md (Makefile Targets requirement)
 # All targets delegate to `uv run`; `make ci` mirrors the local portion of .github/workflows/ci.yml
 
-.PHONY: help test lint format format-check typecheck lock-check ci
+# Dev server defaults — override via environment or `make run HOST=127.0.0.1 PORT=9000`
+HOST ?= 0.0.0.0
+PORT ?= 8000
+
+.PHONY: help test lint format format-check typecheck lock-check ci run
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
@@ -26,6 +30,9 @@ lock-check:  ## Verify lockfile is in sync
 	uv lock --check
 
 # Mirrors .github/workflows/ci.yml in the same step order (CI-infra steps skipped).
+run:  ## Start the uvicorn dev server with hot-reload
+	uv run uvicorn app.main:app --host $(HOST) --port $(PORT) --reload
+
 ci:  ## Run all local quality checks
 	uv sync --frozen
 	uv run ruff check .

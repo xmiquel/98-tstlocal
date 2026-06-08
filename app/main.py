@@ -7,9 +7,10 @@ in-memory store. Routes are registered on a module-level FastAPI instance.
 from fastapi import FastAPI, HTTPException
 
 from app.schemas import StrategyCreate
+from app.settings import settings
 from app.store import store
 
-app: FastAPI = FastAPI()
+app: FastAPI = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
 
 @app.get("/health")
