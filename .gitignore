@@ -17,3 +17,6 @@ htmlcov/
 # User-level IDE / agent workflow artifacts (not part of the project source)
 .atl/
 .windsurf/
+
+# Environment — local overrides (never committed)
+.env
