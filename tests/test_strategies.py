@@ -84,6 +84,29 @@ def test_delete_strategy_returns_404() -> None:
     response = client.delete("/strategies/non-existent-id")
     assert response.status_code == 404
 
+# ── Strategy Name Filter ──────────────────────────────────────────────────
+
+
+def test_list_strategies_filters_by_name() -> None:
+    """GET /strategies?name=MACD returns only matching strategies."""
+    client.post("/strategies", json={"name": "MACD crossover"})
+    client.post("/strategies", json={"name": "RSI divergence"})
+    client.post("/strategies", json={"name": "Bollinger squeeze"})
+    response = client.get("/strategies?name=MACD")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "MACD crossover"
+
+
+def test_list_strategies_no_match_returns_empty() -> None:
+    """GET /strategies?name=NonExistent returns empty list."""
+    client.post("/strategies", json={"name": "MACD crossover"})
+    client.post("/strategies", json={"name": "RSI divergence"})
+    response = client.get("/strategies?name=NonExistent")
+    assert response.status_code == 200
+    assert response.json() == []
+
 
 # ── Strategy Update ──────────────────────────────────────────────────────────
 
