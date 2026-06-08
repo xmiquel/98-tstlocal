@@ -1,16 +1,33 @@
 """FastAPI application for the 98-tstlocal trading app.
 
-Provides health-check and trading strategy CRUD endpoints backed by an
-in-memory store. Routes are registered on a module-level FastAPI instance.
+Provides health-check and trading strategy CRUD endpoints backed by a
+SQLite database via SQLAlchemy. Routes are registered on a module-level
+FastAPI instance with a lifespan handler for database bootstrap.
 """
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
+from app.database import Base
 from app.schemas import StrategyCreate, StrategyUpdate
 from app.settings import settings
 from app.store import store
 
-app: FastAPI = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
+    """Create database tables on startup if they do not exist."""
+    Base.metadata.create_all(store._engine)
+    yield
+
+
+app: FastAPI = FastAPI(
+    title=settings.APP_NAME,
+    debug=settings.DEBUG,
+    lifespan=lifespan,
+)
 
 
 @app.get("/health")
