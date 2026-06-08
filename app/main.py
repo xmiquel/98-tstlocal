@@ -9,6 +9,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
+from fastapi.staticfiles import StaticFiles
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.templating import Jinja2Templates
 
 from app.database import Base
 from app.schemas import StrategyCreate, StrategyUpdate
@@ -29,6 +34,9 @@ app: FastAPI = FastAPI(
     lifespan=lifespan,
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -36,10 +44,23 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/")
+def index(request: Request) -> Response:
+    """Render the application index page."""
+    return templates.TemplateResponse(request, "index.html", {})
+
+
 @app.get("/strategies")
-def list_strategies(name: str | None = Query(None)) -> list[dict[str, object]]:
-    """Return all strategies, optionally filtered by name (case-insensitive)."""
-    return [s.model_dump() for s in store.list(name_filter=name)]
+def list_strategies(
+    request: Request,
+    name: str | None = Query(None),
+) -> Response:
+    """Return all strategies as JSON, or render HTML for browser requests."""
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        strats = store.list()
+        return templates.TemplateResponse(request, "strategies/list.html", {"strategies": strats})
+    return JSONResponse(jsonable_encoder([s.model_dump() for s in store.list(name_filter=name)]))
 
 
 @app.post("/strategies", status_code=201)

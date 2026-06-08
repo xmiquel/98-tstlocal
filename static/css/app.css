@@ -1,0 +1,122 @@
+/* 98-tstlocal — Minimal application styling */
+
+/* ── Reset & Base ──────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, sans-serif;
+  line-height: 1.6;
+  color: #1a1a2e;
+  background: #f5f6fa;
+  min-height: 100vh;
+}
+
+/* ── Navigation ────────────────────────────────────────────────────────── */
+
+nav {
+  background: #1a1a2e;
+  color: #eaeaea;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+nav a {
+  color: #eaeaea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+nav a:hover {
+  color: #a0a0d0;
+}
+
+nav .nav-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* ── Main Content ──────────────────────────────────────────────────────── */
+
+main {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+h1 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  color: #1a1a2e;
+}
+
+/* ── Strategy Table ─────────────────────────────────────────────────────── */
+
+#strategy-table {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  background: #f0f0f5;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: #f0f0ff;
+}
+
+/* ── Empty State ────────────────────────────────────────────────────────── */
+
+td[colspan] {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  padding: 2rem 1rem;
+}
+
+/* ── Refresh Button ─────────────────────────────────────────────────────── */
+
+button {
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+button:hover {
+  background: #2a2a4e;
+}
