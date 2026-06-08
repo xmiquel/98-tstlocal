@@ -6,7 +6,7 @@ in-memory store. Routes are registered on a module-level FastAPI instance.
 
 from fastapi import FastAPI, HTTPException
 
-from app.schemas import StrategyCreate
+from app.schemas import StrategyCreate, StrategyUpdate
 from app.settings import settings
 from app.store import store
 
@@ -38,6 +38,16 @@ def get_strategy(strategy_id: str) -> dict[str, object]:
     strategy = store.get(strategy_id)
     if strategy is None:
         raise HTTPException(status_code=404, detail="Strategy not found")
+    return strategy.model_dump()
+
+
+@app.put("/strategies/{strategy_id}")
+def update_strategy(strategy_id: str, payload: StrategyUpdate) -> dict[str, object]:
+    """Update a strategy by id, or 404 if not found."""
+    try:
+        strategy = store.update(strategy_id, payload)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Strategy not found") from None
     return strategy.model_dump()
 
 
