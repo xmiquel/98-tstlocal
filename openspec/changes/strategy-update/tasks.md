@@ -24,6 +24,6 @@ Chain strategy: size-exception
 
 ## Phase 1: Core Implementation
 
-- [ ] 1.1 Write RED test: add 4 update scenarios to `tests/test_strategies.py` — store.update success, store.update KeyError, PUT 200, PUT 404
-- [ ] 1.2 Implement GREEN: add `StrategyUpdate` to `app/schemas.py`, `update()` to `app/store.py`, PUT route to `app/main.py` — make all 4 tests pass
-- [ ] 1.3 Verify spec delta: confirm `openspec/changes/strategy-update/specs/trading-domain/spec.md` update scenarios match the implementation
+- [x] 1.1 Write RED test: add 4 update scenarios to `tests/test_strategies.py` — store.update success, store.update KeyError, PUT 200, PUT 404
+- [x] 1.2 Implement GREEN: add `StrategyUpdate` to `app/schemas.py`, `update()` to `app/store.py`, PUT route to `app/main.py` — make all 4 tests pass
+- [x] 1.3 Verify spec delta: confirm `openspec/changes/strategy-update/specs/trading-domain/spec.md` update scenarios match the implementation

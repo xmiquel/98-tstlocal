@@ -42,14 +42,12 @@ def get_strategy(strategy_id: str) -> dict[str, object]:
 
 
 @app.put("/strategies/{strategy_id}")
-def update_strategy(
-    strategy_id: str, payload: StrategyUpdate
-) -> dict[str, object]:
+def update_strategy(strategy_id: str, payload: StrategyUpdate) -> dict[str, object]:
     """Update a strategy by id, or 404 if not found."""
     try:
         strategy = store.update(strategy_id, payload)
     except KeyError:
-        raise HTTPException(status_code=404, detail="Strategy not found")
+        raise HTTPException(status_code=404, detail="Strategy not found") from None
     return strategy.model_dump()
 
 

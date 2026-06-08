@@ -98,9 +98,7 @@ def test_update_strategy() -> None:
     """POST creates, PUT updates name, GET confirms the update persists."""
     create_resp = client.post("/strategies", json={"name": "Original"})
     strategy_id = create_resp.json()["id"]
-    update_resp = client.put(
-        f"/strategies/{strategy_id}", json={"name": "Updated Name"}
-    )
+    update_resp = client.put(f"/strategies/{strategy_id}", json={"name": "Updated Name"})
     assert update_resp.status_code == 200
     data = update_resp.json()
     assert data["name"] == "Updated Name"
@@ -111,9 +109,7 @@ def test_update_strategy() -> None:
 
 def test_update_strategy_not_found() -> None:
     """PUT /strategies/{non-existent-id} returns 404."""
-    response = client.put(
-        "/strategies/non-existent-id", json={"name": "Ghost"}
-    )
+    response = client.put("/strategies/non-existent-id", json={"name": "Ghost"})
     assert response.status_code == 404
 
 
