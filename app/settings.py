@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     APP_NAME: str = "98-tstlocal"
+    DATABASE_URL: str = "sqlite:///./data/trading.db"
     DEBUG: bool = False
     HOST: str = "0.0.0.0"  # noqa: S104 — intentional dev-server default
     PORT: int = 8000

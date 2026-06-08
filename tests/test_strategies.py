@@ -14,12 +14,6 @@ from app.store import store
 client = TestClient(app)
 
 
-@pytest.fixture(autouse=True)
-def _clear_store() -> None:
-    """Ensure each test starts with a clean store for isolation."""
-    store.clear()
-
-
 def test_list_strategies_returns_empty_list() -> None:
     """GET /strategies returns [] when the store is empty."""
     response = client.get("/strategies")
