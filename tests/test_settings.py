@@ -14,6 +14,7 @@ def test_default_values() -> None:
     assert settings.DEBUG is False
     assert settings.HOST == "0.0.0.0"  # noqa: S104 — matches dev-server default
     assert settings.PORT == 8000
+    assert settings.DATABASE_URL == "sqlite:///./data/trading.db"
 
 
 def test_env_override_partial() -> None:
@@ -27,11 +28,12 @@ def test_env_override_partial() -> None:
 
 def test_env_override_all() -> None:
     """Settings(...) with all keyword arguments overrides every field."""
-    settings = Settings(APP_NAME="custom-app", DEBUG=True, HOST="127.0.0.1", PORT=9000)
+    settings = Settings(APP_NAME="custom-app", DEBUG=True, HOST="127.0.0.1", PORT=9000, DATABASE_URL="sqlite:///./custom.db")
     assert settings.APP_NAME == "custom-app"
     assert settings.DEBUG is True
     assert settings.HOST == "127.0.0.1"
     assert settings.PORT == 9000
+    assert settings.DATABASE_URL == "sqlite:///./custom.db"
 
 
 def test_type_coercion_debug_string_true() -> None:
