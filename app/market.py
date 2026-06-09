@@ -102,7 +102,7 @@ class MarketDatabase:
             end = end_date or datetime.date(9999, 12, 31)
             rows = self._conn.execute(
                 """
-                SELECT datetime, open, high, low, close, tickvol AS volume, spread
+                SELECT datetime, open, high, low, close, tickvol, spread
                 FROM dt_ohlc_m1
                 WHERE symbol = ? AND datetime >= ? AND datetime < ?
                 ORDER BY datetime
@@ -112,7 +112,7 @@ class MarketDatabase:
         else:
             rows = self._conn.execute(
                 """
-                SELECT datetime, open, high, low, close, tickvol AS volume, spread
+                SELECT datetime, open, high, low, close, tickvol, spread
                 FROM dt_ohlc_m1
                 WHERE symbol = ?
                 ORDER BY datetime DESC
@@ -129,7 +129,7 @@ class MarketDatabase:
                 "high": float(row[2]),
                 "low": float(row[3]),
                 "close": float(row[4]),
-                "volume": int(row[5]),
+                "tickvol": int(row[5]),
                 "spread": int(row[6]),
             }
             for row in rows
@@ -151,7 +151,7 @@ class MarketDatabase:
                        max(high) AS high,
                        min(low) AS low,
                        last(close ORDER BY datetime) AS close,
-                       sum(tickvol) AS volume,
+                       sum(tickvol) AS tickvol,
                        first(spread ORDER BY datetime) AS spread
                 FROM dt_ohlc_m1
                 WHERE symbol = ? AND datetime >= ? AND datetime < ?
@@ -165,18 +165,18 @@ class MarketDatabase:
             ]
         else:
             sql = """
-                SELECT t, open, high, low, close, volume, spread FROM (
+                SELECT t, open, high, low, close, tickvol, spread FROM (
                     SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
                            first(open ORDER BY datetime) AS open,
                            max(high) AS high,
                            min(low) AS low,
                            last(close ORDER BY datetime) AS close,
-                           sum(tickvol) AS volume,
+                           sum(tickvol) AS tickvol,
                            first(spread ORDER BY datetime) AS spread
-                     FROM dt_ohlc_m1
-                     WHERE symbol = ?
-                     GROUP BY t ORDER BY t DESC LIMIT ?
-                 ) sub ORDER BY t
+                    FROM dt_ohlc_m1
+                    WHERE symbol = ?
+                    GROUP BY t ORDER BY t DESC LIMIT ?
+                ) sub ORDER BY t
             """
             params = [interval, symbol, limit]
 
@@ -188,7 +188,7 @@ class MarketDatabase:
                 "high": float(row[2]),
                 "low": float(row[3]),
                 "close": float(row[4]),
-                "volume": int(row[5]),
+                "tickvol": int(row[5]),
                 "spread": int(row[6]),
             }
             for row in result
