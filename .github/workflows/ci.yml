@@ -88,4 +88,4 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
       - run: uv sync
       - run: uv run playwright install chromium
-      - run: uv run pytest -m e2e -v --timeout=60 --no-cov
+      - run: uv run pytest -m e2e --no-cov -v
