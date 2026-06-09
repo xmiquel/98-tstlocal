@@ -120,3 +120,39 @@ button {
 button:hover {
   background: #2a2a4e;
 }
+
+/* ── Chart Page ─────────────────────────────────────────────────────────── */
+
+#chart {
+  width: 100%;
+  height: 500px;
+}
+
+#chart-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+#chart-controls label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  gap: 0.25rem;
+}
+
+#chart-controls select,
+#chart-controls input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+#chart-controls button {
+  margin-bottom: 0;
+}

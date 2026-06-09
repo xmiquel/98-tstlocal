@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Market Chart — 98-tstlocal{% endblock %}
+{% block content %}
+<h1>Market Chart</h1>
+
+<form id="chart-controls" method="get" action="/market/chart">
+    <label>Symbol:
+        <select name="symbol">
+            {% for s in symbols %}
+            <option value="{{ s }}" {% if s == selected_symbol %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>From:
+        <input type="date" name="start" value="{{ start }}">
+    </label>
+    <label>To:
+        <input type="date" name="end" value="{{ end }}">
+    </label>
+    <input type="hidden" name="timeframe" value="{{ timeframe }}">
+    <input type="hidden" name="limit" value="200">
+    <button type="submit">Load</button>
+</form>
+
+<div id="chart" style="width: 100%; height: 500px;"></div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/static/js/chart.js"></script>
+<script>
+    window.__chartConfig = {
+        symbol: "{{ selected_symbol }}",
+        timeframe: "{{ timeframe }}",
+        limit: {{ limit }},
+        start: "{{ start }}",
+        end: "{{ end }}",
+    };
+</script>
+{% endblock %}

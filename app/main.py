@@ -5,6 +5,7 @@ SQLite database via SQLAlchemy. Routes are registered on a module-level
 FastAPI instance with a lifespan handler for database bootstrap.
 """
 
+import datetime
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -17,6 +18,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.templating import Jinja2Templates
 
 from app.database import Base
+from app.market import MarketDatabase
 from app.schemas import StrategyCreate, StrategyUpdate
 from app.settings import settings
 from app.store import store
@@ -43,6 +45,71 @@ templates = Jinja2Templates(directory="templates")
 def health() -> dict[str, str]:
     """Health-check endpoint; returns a fixed status payload."""
     return {"status": "ok"}
+
+
+@app.get("/api/ohlc")
+def get_ohlc(
+    symbol: str = Query(...),
+    timeframe: str = Query("1m"),
+    limit: int = Query(200, ge=1),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+) -> JSONResponse:
+    """Return OHLCV bars as JSON array.
+
+    The limit is capped at 5000. Start/end are ISO date strings.
+    """
+    actual_limit = min(limit, 5000)
+
+    try:
+        start_date = datetime.date.fromisoformat(start) if start else None
+        end_date = datetime.date.fromisoformat(end) if end else None
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid date format") from None
+
+    db = MarketDatabase()
+    try:
+        data = db.query_ohlc(
+            symbol=symbol,
+            timeframe=timeframe,
+            limit=actual_limit,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    finally:
+        db.close()
+    return JSONResponse(data)
+
+
+@app.get("/market/chart")
+def market_chart(
+    request: Request,
+    symbol: str | None = Query(None),
+    timeframe: str = Query("1m"),
+    limit: int = Query(200),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+) -> Response:
+    """Render the market chart page with symbol selector and date inputs."""
+    db = MarketDatabase()
+    try:
+        symbols = db.list_symbols()
+    finally:
+        db.close()
+
+    selected = symbol or (symbols[0] if symbols else None)
+    return templates.TemplateResponse(
+        request,
+        "market/chart.html",
+        {
+            "symbols": symbols,
+            "selected_symbol": selected,
+            "timeframe": timeframe,
+            "limit": limit,
+            "start": start or "",
+            "end": end or "",
+        },
+    )
 
 
 @app.get("/")
