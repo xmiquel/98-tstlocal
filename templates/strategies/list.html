@@ -2,7 +2,10 @@
 {% block title %}Strategies — 98-tstlocal{% endblock %}
 {% block content %}
 <h1>Strategies</h1>
-<button hx-get="/strategies" hx-target="#strategy-table" hx-swap="outerHTML">Refresh</button>
+<div class="toolbar">
+  <a href="/strategies/new" class="btn">New Strategy</a>
+  <button hx-get="/strategies" hx-target="#strategy-table" hx-swap="outerHTML">Refresh</button>
+</div>
 <div id="strategy-table">
   <table id="strategies-table">
     <thead>
@@ -10,6 +13,7 @@
         <th>Name</th>
         <th>Description</th>
         <th>Created</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -18,10 +22,17 @@
         <td>{{ s.name }}</td>
         <td>{{ s.description or "" }}</td>
         <td>{{ s.created_at }}</td>
+        <td>
+          <a href="/strategies/{{ s.id }}/edit">Edit</a>
+          <button hx-delete="/strategies/{{ s.id }}/html"
+                  hx-confirm="Delete {{ s.name }}?"
+                  hx-target="#strategies-table"
+                  hx-swap="outerHTML">Delete</button>
+        </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="3">No strategies yet.</td>
+        <td colspan="4">No strategies yet.</td>
       </tr>
       {% endfor %}
     </tbody>

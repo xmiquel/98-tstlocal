@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 class StrategyCreate(BaseModel):
     """Input model for creating a new trading strategy."""
 
-    name: str
+    name: str = Field(min_length=1)
     description: str | None = None
 
 
@@ -24,7 +24,7 @@ class StrategyUpdate(BaseModel):
     signal semantic intent and allow future divergence (e.g. PATCH).
     """
 
-    name: str
+    name: str = Field(min_length=1)
     description: str | None = None
 
 
