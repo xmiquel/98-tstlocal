@@ -107,17 +107,18 @@ def test_edit_form_prefilled() -> None:
 
 
 def test_create_via_form() -> None:
-    """POST /strategies/html with valid form data creates strategy and includes it."""
+    """POST /strategies/html with valid form data creates strategy and redirects."""
     response = client.post(
         "/strategies/html",
         data={"name": "Test Strategy", "description": "A test"},
         headers=FORM_HEADERS,
     )
     assert response.status_code == 200
-    body = response.text
-    assert "Test Strategy" in body
-    # Triangulate: description is also persisted in the response
-    assert "A test" in body
+    assert response.headers.get("HX-Redirect") == "/strategies"
+    # Verify strategy was actually persisted
+    list_resp = client.get("/strategies", headers={"Accept": BROWSER_ACCEPT})
+    assert "Test Strategy" in list_resp.text
+    assert "A test" in list_resp.text
 
 
 def test_form_rejects_empty_name() -> None:
@@ -139,7 +140,7 @@ def test_form_rejects_empty_name() -> None:
 
 
 def test_edit_via_form() -> None:
-    """PUT /strategies/{id}/html updates strategy and reflects change."""
+    """PUT /strategies/{id}/html updates strategy and redirects."""
     create_resp = client.post("/strategies", json={"name": "Original Name"})
     strat_id = create_resp.json()["id"]
     response = client.put(
@@ -148,10 +149,11 @@ def test_edit_via_form() -> None:
         headers=FORM_HEADERS,
     )
     assert response.status_code == 200
-    body = response.text
-    assert "Updated Name" in body
-    # Triangulate: original name is no longer present
-    assert "Original Name" not in body
+    assert response.headers.get("HX-Redirect") == "/strategies"
+    # Verify update via JSON API
+    get_resp = client.get(f"/strategies/{strat_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["name"] == "Updated Name"
     # Triangulate: edit with name-only (no description) still works
     strat2_resp = client.post("/strategies", json={"name": "Second"})
     strat2_id = strat2_resp.json()["id"]
@@ -161,7 +163,9 @@ def test_edit_via_form() -> None:
         headers=FORM_HEADERS,
     )
     assert r2.status_code == 200
-    assert "Updated Second" in r2.text
+    assert r2.headers.get("HX-Redirect") == "/strategies"
+    get_resp2 = client.get(f"/strategies/{strat2_id}")
+    assert get_resp2.json()["name"] == "Updated Second"
 
 
 # ── DELETE /strategies/{id}/html (delete via HTMX) ─────────────────────────

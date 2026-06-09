@@ -69,7 +69,7 @@ def create_strategy_form(request: Request) -> Response:
     """Render the strategy creation form."""
     return templates.TemplateResponse(
         request,
-        "strategies/form.html",
+        "strategies/form_page.html",
         {
             "action": "/strategies/html",
             "method": "post",
@@ -92,7 +92,7 @@ def create_strategy_html(
     name: str | None = Form(None),
     description: str | None = Form(None),
 ) -> Response:
-    """Create a strategy from HTML form data, return updated list."""
+    """Create a strategy from HTML form data; redirect to list on success."""
     if not name:
         return templates.TemplateResponse(
             request,
@@ -120,7 +120,7 @@ def create_strategy_html(
             },
             status_code=422,
         )
-    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
+    return Response(headers={"HX-Redirect": "/strategies"})
 
 
 @app.get("/strategies/{strategy_id}")
@@ -140,7 +140,7 @@ def edit_strategy_form(request: Request, strategy_id: str) -> Response:
         raise HTTPException(status_code=404, detail="Strategy not found")
     return templates.TemplateResponse(
         request,
-        "strategies/form.html",
+        "strategies/form_page.html",
         {
             "action": f"/strategies/{strategy_id}/html",
             "method": "put",
@@ -197,7 +197,7 @@ def update_strategy_html(
             },
             status_code=422,
         )
-    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
+    return Response(headers={"HX-Redirect": "/strategies"})
 
 
 @app.delete("/strategies/{strategy_id}", status_code=204)
