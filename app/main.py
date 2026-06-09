@@ -8,9 +8,10 @@ FastAPI instance with a lifespan handler for database bootstrap.
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Form, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.templating import Jinja2Templates
@@ -63,11 +64,63 @@ def list_strategies(
     return JSONResponse(jsonable_encoder([s.model_dump() for s in store.list(name_filter=name)]))
 
 
+@app.get("/strategies/new")
+def create_strategy_form(request: Request) -> Response:
+    """Render the strategy creation form."""
+    return templates.TemplateResponse(
+        request,
+        "strategies/form.html",
+        {
+            "action": "/strategies/html",
+            "method": "post",
+            "strategy": None,
+            "errors": None,
+        },
+    )
+
+
 @app.post("/strategies", status_code=201)
 def create_strategy(payload: StrategyCreate) -> dict[str, object]:
     """Create a new strategy from the given payload."""
     strategy = store.create(payload)
     return strategy.model_dump()
+
+
+@app.post("/strategies/html")
+def create_strategy_html(
+    request: Request,
+    name: str | None = Form(None),
+    description: str | None = Form(None),
+) -> Response:
+    """Create a strategy from HTML form data, return updated list."""
+    if not name:
+        return templates.TemplateResponse(
+            request,
+            "strategies/form.html",
+            {
+                "action": "/strategies/html",
+                "method": "post",
+                "strategy": None,
+                "errors": "Name is required",
+            },
+            status_code=422,
+        )
+    try:
+        payload = StrategyCreate(name=name, description=description)
+        store.create(payload)
+    except ValidationError as e:
+        return templates.TemplateResponse(
+            request,
+            "strategies/form.html",
+            {
+                "action": "/strategies/html",
+                "method": "post",
+                "strategy": None,
+                "errors": str(e),
+            },
+            status_code=422,
+        )
+    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
 
 
 @app.get("/strategies/{strategy_id}")
@@ -77,6 +130,24 @@ def get_strategy(strategy_id: str) -> dict[str, object]:
     if strategy is None:
         raise HTTPException(status_code=404, detail="Strategy not found")
     return strategy.model_dump()
+
+
+@app.get("/strategies/{strategy_id}/edit")
+def edit_strategy_form(request: Request, strategy_id: str) -> Response:
+    """Render the strategy edit form pre-filled with existing data."""
+    strategy = store.get(strategy_id)
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return templates.TemplateResponse(
+        request,
+        "strategies/form.html",
+        {
+            "action": f"/strategies/{strategy_id}/html",
+            "method": "put",
+            "strategy": strategy,
+            "errors": None,
+        },
+    )
 
 
 @app.put("/strategies/{strategy_id}")
@@ -89,9 +160,58 @@ def update_strategy(strategy_id: str, payload: StrategyUpdate) -> dict[str, obje
     return strategy.model_dump()
 
 
+@app.put("/strategies/{strategy_id}/html")
+def update_strategy_html(
+    request: Request,
+    strategy_id: str,
+    name: str | None = Form(None),
+    description: str | None = Form(None),
+) -> Response:
+    """Update a strategy from HTML form data, return updated list."""
+    if not name:
+        return templates.TemplateResponse(
+            request,
+            "strategies/form.html",
+            {
+                "action": f"/strategies/{strategy_id}/html",
+                "method": "put",
+                "strategy": None,
+                "errors": "Name is required",
+            },
+            status_code=422,
+        )
+    try:
+        payload = StrategyUpdate(name=name, description=description)
+        store.update(strategy_id, payload)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Strategy not found") from None
+    except ValidationError as e:
+        return templates.TemplateResponse(
+            request,
+            "strategies/form.html",
+            {
+                "action": f"/strategies/{strategy_id}/html",
+                "method": "put",
+                "strategy": None,
+                "errors": str(e),
+            },
+            status_code=422,
+        )
+    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
+
+
 @app.delete("/strategies/{strategy_id}", status_code=204)
 def delete_strategy(strategy_id: str) -> None:
     """Delete a strategy by id, or 404 if not found."""
     deleted = store.delete(strategy_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Strategy not found")
+
+
+@app.delete("/strategies/{strategy_id}/html")
+def delete_strategy_html(request: Request, strategy_id: str) -> Response:
+    """Delete a strategy and return updated list (200, not 204, for HTMX swap)."""
+    deleted = store.delete(strategy_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
