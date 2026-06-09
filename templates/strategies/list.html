@@ -6,36 +6,5 @@
   <a href="/strategies/new" class="btn">New Strategy</a>
   <button hx-get="/strategies" hx-target="#strategy-table" hx-swap="outerHTML">Refresh</button>
 </div>
-<div id="strategy-table">
-  <table id="strategies-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Created</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in strategies %}
-      <tr>
-        <td>{{ s.name }}</td>
-        <td>{{ s.description or "" }}</td>
-        <td>{{ s.created_at }}</td>
-        <td>
-          <a href="/strategies/{{ s.id }}/edit">Edit</a>
-          <button hx-delete="/strategies/{{ s.id }}/html"
-                  hx-confirm="Delete {{ s.name }}?"
-                  hx-target="#strategies-table"
-                  hx-swap="outerHTML">Delete</button>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="4">No strategies yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+{% include "strategies/table.html" %}
 {% endblock %}

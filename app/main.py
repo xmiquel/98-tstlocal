@@ -56,9 +56,17 @@ def list_strategies(
     request: Request,
     name: str | None = Query(None),
 ) -> Response:
-    """Return all strategies as JSON, or render HTML for browser requests."""
+    """Return strategies as JSON, full page for browsers, or table partial for HTMX."""
     accept = request.headers.get("accept", "")
+    is_htmx = request.headers.get("hx-request", "").lower() == "true"
+
+    if is_htmx:
+        # HTMX swap (refresh button, post-delete): return table partial only
+        return templates.TemplateResponse(
+            request, "strategies/table.html", {"strategies": store.list()}
+        )
     if "text/html" in accept:
+        # Full page load
         strats = store.list()
         return templates.TemplateResponse(request, "strategies/list.html", {"strategies": strats})
     return JSONResponse(jsonable_encoder([s.model_dump() for s in store.list(name_filter=name)]))
@@ -214,4 +222,6 @@ def delete_strategy_html(request: Request, strategy_id: str) -> Response:
     deleted = store.delete(strategy_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Strategy not found")
-    return templates.TemplateResponse(request, "strategies/list.html", {"strategies": store.list()})
+    return templates.TemplateResponse(
+        request, "strategies/table.html", {"strategies": store.list()}
+    )
