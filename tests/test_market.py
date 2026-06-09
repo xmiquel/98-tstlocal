@@ -224,7 +224,7 @@ def test_query_ohlc_1d_aggregation(market_db_with_data: MarketDatabase) -> None:
     assert "high" in rows[0]
     assert "low" in rows[0]
     assert "close" in rows[0]
-    assert "tickvol" in rows[0]
+    assert "volume" in rows[0]
     assert "spread" in rows[0]
 
 
