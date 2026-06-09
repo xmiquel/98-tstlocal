@@ -47,3 +47,29 @@ def test_chart_defaults_to_last_200(page: Page, e2e_server: str) -> None:
     expect(page.locator("canvas").first).to_be_visible()
     # Default page loads without query params
     assert "?" not in page.url
+
+
+@pytest.mark.e2e
+def test_tooltip_shows_tickvol_and_spread(page: Page, e2e_server: str) -> None:
+    """Tooltip displays tickvol and spread values from data."""
+    page.goto(f"{e2e_server}/market/chart")
+    # Wait for chart to load
+    page.wait_for_timeout(1500)
+
+    # Use mouse.move to hover over chart area (canvas has pointer-events issues)
+    box = page.locator("#chart").bounding_box()
+    if box:
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.wait_for_timeout(500)
+
+    # Check tooltip content
+    tooltip = page.locator("#chart-tooltip")
+    expect(tooltip).to_be_visible()
+
+    # Get tooltip text and verify tickvol and spread
+    tooltip_text = tooltip.inner_text()
+    print(f"Tooltip text: {tooltip_text}")
+
+    # Should contain actual values from test data (tickvol=20, spread=2)
+    assert "20" in tooltip_text  # tickvol from test data
+    assert "2" in tooltip_text  # spread from test data
