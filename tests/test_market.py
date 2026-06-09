@@ -193,3 +193,68 @@ def test_query_ohlc_empty_symbol(market_db_with_data: MarketDatabase) -> None:
     """query_ohlc for unknown symbol returns empty list."""
     rows = market_db_with_data.query_ohlc(symbol="NONEXISTENT")
     assert rows == []
+
+
+# ── aggregated query_ohlc tests ──────────────────────────────────────────
+
+
+def test_query_ohlc_5m_aggregation(market_db_with_data: MarketDatabase) -> None:
+    """5m aggregation returns bars with spread in ascending time order."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="5m", limit=10)
+    assert len(rows) > 0
+    assert "spread" in rows[0]
+    if len(rows) >= 2:
+        t0: int = rows[0]["time"]  # type: ignore[assignment]
+        t1: int = rows[1]["time"]  # type: ignore[assignment]
+        assert t0 < t1
+
+
+def test_query_ohlc_1h_aggregation(market_db_with_data: MarketDatabase) -> None:
+    """1h aggregation respects the limit parameter and returns spread."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="1h", limit=5)
+    assert len(rows) <= 5
+    assert all("spread" in r for r in rows)
+
+
+def test_query_ohlc_1d_aggregation(market_db_with_data: MarketDatabase) -> None:
+    """1d aggregation returns bars with all expected fields."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="1d", limit=3)
+    assert len(rows) > 0
+    assert "open" in rows[0]
+    assert "high" in rows[0]
+    assert "low" in rows[0]
+    assert "close" in rows[0]
+    assert "volume" in rows[0]
+    assert "spread" in rows[0]
+
+
+def test_query_ohlc_invalid_timeframe(market_db_with_data: MarketDatabase) -> None:
+    """Invalid timeframe raises ValueError."""
+    with pytest.raises(ValueError, match="Unsupported timeframe"):
+        market_db_with_data.query_ohlc(symbol="TEST", timeframe="invalid")
+
+
+def test_query_ohlc_aggregated_date_range(market_db_with_data: MarketDatabase) -> None:
+    """Aggregated query with date range returns bars with spread."""
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="5m",
+        start_date=datetime.date(2024, 1, 1),
+        end_date=datetime.date(2024, 1, 2),
+    )
+    assert len(rows) > 0
+    assert "spread" in rows[0]
+
+
+def test_query_ohlc_15m_aggregation(market_db_with_data: MarketDatabase) -> None:
+    """15m aggregation also works (triangulation on different timeframe)."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="15m", limit=5)
+    assert len(rows) > 0
+    assert all("spread" in r for r in rows)
+
+
+def test_query_ohlc_1m_has_spread(market_db_with_data: MarketDatabase) -> None:
+    """1m (raw) path also includes spread."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="1m", limit=3)
+    assert len(rows) > 0
+    assert "spread" in rows[0]

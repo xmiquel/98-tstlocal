@@ -80,25 +80,29 @@ class MarketDatabase:
         ).fetchall()
         return [row[0] for row in result]
 
-    def query_ohlc(
+    INTERVAL_MAP: dict[str, str | None] = {
+        "1m": None,
+        "5m": "5 minutes",
+        "15m": "15 minutes",
+        "30m": "30 minutes",
+        "1h": "1 hour",
+        "4h": "4 hours",
+        "1d": "1 day",
+    }
+
+    def _query_ohlc_raw(
         self,
         symbol: str,
-        timeframe: str = "1m",  # noqa: ARG002 — accepted for future compat
         limit: int = 200,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ) -> list[dict[str, object]]:
-        """Query OHLCV bars from dt_ohlc_m1.
-
-        Two modes:
-        - Date range mode (start_date provided): filters by datetime range.
-        - Limit mode (default): returns the last N bars and reverses to ascending.
-        """
+        """Query raw 1-minute OHLCV bars with spread."""
         if start_date is not None:
             end = end_date or datetime.date(9999, 12, 31)
             rows = self._conn.execute(
                 """
-                SELECT datetime, open, high, low, close, volume
+                SELECT datetime, open, high, low, close, volume, spread
                 FROM dt_ohlc_m1
                 WHERE symbol = ? AND datetime >= ? AND datetime < ?
                 ORDER BY datetime
@@ -108,7 +112,7 @@ class MarketDatabase:
         else:
             rows = self._conn.execute(
                 """
-                SELECT datetime, open, high, low, close, volume
+                SELECT datetime, open, high, low, close, volume, spread
                 FROM dt_ohlc_m1
                 WHERE symbol = ?
                 ORDER BY datetime DESC
@@ -126,9 +130,92 @@ class MarketDatabase:
                 "low": float(row[3]),
                 "close": float(row[4]),
                 "volume": int(row[5]),
+                "spread": int(row[6]),
             }
             for row in rows
         ]
+
+    def _query_ohlc_aggregated(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> list[dict[str, object]]:
+        """Query aggregated OHLCV bars using time_bucket with spread."""
+        if start_date is not None:
+            sql = """
+                SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                       first(open ORDER BY datetime) AS open,
+                       max(high) AS high,
+                       min(low) AS low,
+                       last(close ORDER BY datetime) AS close,
+                       sum(volume) AS volume,
+                       first(spread ORDER BY datetime) AS spread
+                FROM dt_ohlc_m1
+                WHERE symbol = ? AND datetime >= ? AND datetime < ?
+                GROUP BY t ORDER BY t
+            """
+            params: list[object] = [
+                interval,
+                symbol,
+                start_date,
+                end_date or datetime.date(9999, 12, 31),
+            ]
+        else:
+            sql = """
+                SELECT t, open, high, low, close, volume, spread FROM (
+                    SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                           first(open ORDER BY datetime) AS open,
+                           max(high) AS high,
+                           min(low) AS low,
+                           last(close ORDER BY datetime) AS close,
+                           sum(volume) AS volume,
+                           first(spread ORDER BY datetime) AS spread
+                    FROM dt_ohlc_m1
+                    WHERE symbol = ?
+                    GROUP BY t ORDER BY t DESC LIMIT ?
+                ) sub ORDER BY t
+            """
+            params = [interval, symbol, limit]
+
+        result = self._conn.execute(sql, params).fetchall()
+        return [
+            {
+                "time": int(row[0].timestamp()),
+                "open": float(row[1]),
+                "high": float(row[2]),
+                "low": float(row[3]),
+                "close": float(row[4]),
+                "volume": int(row[5]),
+                "spread": int(row[6]),
+            }
+            for row in result
+        ]
+
+    def query_ohlc(
+        self,
+        symbol: str,
+        timeframe: str = "1m",
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> list[dict[str, object]]:
+        """Query OHLCV bars from dt_ohlc_m1.
+
+        Routes 1m to raw query, other timeframes to time_bucket aggregation.
+        Two modes:
+        - Date range mode (start_date provided): filters by datetime range.
+        - Limit mode (default): returns the last N bars and reverses to ascending.
+        """
+        interval = self.INTERVAL_MAP.get(timeframe)
+        if timeframe == "1m":
+            return self._query_ohlc_raw(symbol, limit, start_date, end_date)
+        if interval is not None:
+            return self._query_ohlc_aggregated(symbol, interval, limit, start_date, end_date)
+        msg = f"Unsupported timeframe: {timeframe}"
+        raise ValueError(msg)
 
     def close(self) -> None:
         """Close the DuckDB connection."""
