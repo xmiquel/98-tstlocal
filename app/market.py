@@ -73,6 +73,63 @@ class MarketDatabase:
         """Delete all rows from dt_ohlc_m1."""
         self._conn.execute("DELETE FROM dt_ohlc_m1")
 
+    def list_symbols(self) -> list[str]:
+        """Return distinct symbols from dt_ohlc_m1, sorted alphabetically."""
+        result = self._conn.execute(
+            "SELECT DISTINCT symbol FROM dt_ohlc_m1 ORDER BY symbol"
+        ).fetchall()
+        return [row[0] for row in result]
+
+    def query_ohlc(
+        self,
+        symbol: str,
+        timeframe: str = "1m",  # noqa: ARG002 — accepted for future compat
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> list[dict[str, object]]:
+        """Query OHLCV bars from dt_ohlc_m1.
+
+        Two modes:
+        - Date range mode (start_date provided): filters by datetime range.
+        - Limit mode (default): returns the last N bars and reverses to ascending.
+        """
+        if start_date is not None:
+            end = end_date or datetime.date(9999, 12, 31)
+            rows = self._conn.execute(
+                """
+                SELECT datetime, open, high, low, close, volume
+                FROM dt_ohlc_m1
+                WHERE symbol = ? AND datetime >= ? AND datetime < ?
+                ORDER BY datetime
+                """,
+                [symbol, start_date, end],
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                """
+                SELECT datetime, open, high, low, close, volume
+                FROM dt_ohlc_m1
+                WHERE symbol = ?
+                ORDER BY datetime DESC
+                LIMIT ?
+                """,
+                [symbol, limit],
+            ).fetchall()
+            rows.reverse()
+
+        return [
+            {
+                "time": int(row[0].timestamp()),
+                "open": float(row[1]),
+                "high": float(row[2]),
+                "low": float(row[3]),
+                "close": float(row[4]),
+                "volume": int(row[5]),
+            }
+            for row in rows
+        ]
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._conn.close()

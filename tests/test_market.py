@@ -35,6 +35,32 @@ def db() -> Generator[MarketDatabase, None, None]:
     mdb.close()
 
 
+@pytest.fixture
+def market_db_with_data() -> Generator[MarketDatabase, None, None]:
+    """Create an in-memory DuckDB with sample OHLCV data for query tests."""
+    mdb = MarketDatabase(db_path=":memory:")
+    # Insert sample data across multiple days
+    base_dt = datetime.datetime(2024, 1, 1, 0, 0, 0)
+    rows: list[tuple[object, ...]] = []
+    for i in range(10):
+        dt = base_dt + datetime.timedelta(hours=i)
+        rows.append(
+            (dt, "TEST", 100.0 + i, 101.0 + i, 99.0 + i, 100.5 + i, 100, 1000 + i, 1, "test", dt)
+        )
+    for i in range(5):
+        dt = datetime.datetime(2024, 1, 2, 0, 0, 0) + datetime.timedelta(hours=i)
+        rows.append(
+            (dt, "TEST", 200.0 + i, 201.0 + i, 199.0 + i, 200.5 + i, 100, 2000 + i, 1, "test", dt)
+        )
+    for row in rows:
+        mdb._conn.execute(
+            "INSERT INTO dt_ohlc_m1 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            row,
+        )
+    yield mdb
+    mdb.close()
+
+
 def test_table_created_on_connect(db: MarketDatabase) -> None:
     """Connecting to DuckDB creates dt_ohlc_m1 table."""
     tables = db._conn.execute(
@@ -125,3 +151,45 @@ def test_ingest_csv_defaults_to_settings_path() -> None:
     mdb = MarketDatabase()
     assert mdb._path == settings.MARKET_DB_PATH
     mdb.close()
+
+
+# ── query_ohlc tests ─────────────────────────────────────────────────────
+
+
+def test_query_ohlc_returns_bars(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc returns OHLCV records in ascending time order."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST")
+    assert len(rows) > 0
+    assert "time" in rows[0]
+    assert "open" in rows[0]
+    assert isinstance(rows[0]["time"], int)
+
+
+def test_query_ohlc_respects_limit(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc returns exactly the requested number of bars (ascending)."""
+    rows = market_db_with_data.query_ohlc(symbol="TEST", limit=5)
+    assert len(rows) == 5
+    t0: int = rows[0]["time"]  # type: ignore[assignment]
+    t1: int = rows[-1]["time"]  # type: ignore[assignment]
+    assert t0 <= t1
+
+
+def test_query_ohlc_date_range(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc with date range returns data within that window."""
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        start_date=datetime.date(2024, 1, 1),
+        end_date=datetime.date(2024, 1, 2),
+    )
+    assert len(rows) >= 0
+    # All returned rows should be on 2024-01-01
+    for r in rows:
+        # time is Unix epoch seconds; 2024-01-01 00:00:00 UTC = 1704067200
+        t: int = r["time"]  # type: ignore[assignment]
+        assert t < 1704153600  # 2024-01-02 00:00:00
+
+
+def test_query_ohlc_empty_symbol(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc for unknown symbol returns empty list."""
+    rows = market_db_with_data.query_ohlc(symbol="NONEXISTENT")
+    assert rows == []
