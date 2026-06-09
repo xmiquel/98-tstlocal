@@ -1,20 +1,12 @@
-{% extends "base.html" %}
-{% block title %}
-  {% if strategy %}Edit {{ strategy.name }}{% else %}New Strategy{% endif %} — 98-tstlocal
-{% endblock %}
-{% block content %}
-<h1>{% if strategy %}Edit Strategy{% else %}New Strategy{% endif %}</h1>
-
-{% if errors %}
-<div class="error-summary">
-  <p>{{ errors }}</p>
-</div>
-{% endif %}
-
-<form action="{{ action }}" method="post"
+<form id="strategy-form" action="{{ action }}" method="post"
       {% if method == "put" %}hx-put="{{ action }}"{% else %}hx-post="{{ action }}"{% endif %}
-      hx-target="#strategies-table"
+      hx-target="#strategy-form"
       hx-swap="outerHTML">
+  {% if errors %}
+  <div class="error-summary">
+    <p>{{ errors }}</p>
+  </div>
+  {% endif %}
   <div class="form-group">
     <label for="name">Name</label>
     <input type="text" id="name" name="name" value="{{ strategy.name if strategy else "" }}" required>
@@ -28,4 +20,3 @@
     <a href="/strategies" class="cancel-link">Cancel</a>
   </div>
 </form>
-{% endblock %}
