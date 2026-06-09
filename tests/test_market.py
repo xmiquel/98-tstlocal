@@ -101,9 +101,11 @@ def test_empty_csv(db: MarketDatabase) -> None:
 def test_truncate_clears_rows(db: MarketDatabase, csv_file: str) -> None:
     """truncate() removes all rows from dt_ohlc_m1."""
     db.ingest_csv(csv_file, "test.csv", datetime.datetime.now())
-    assert db._conn.execute("SELECT COUNT(*) FROM dt_ohlc_m1").fetchone()[0] > 0
+    row = db._conn.execute("SELECT COUNT(*) FROM dt_ohlc_m1").fetchone()
+    assert row is not None and row[0] > 0
     db.truncate()
-    assert db._conn.execute("SELECT COUNT(*) FROM dt_ohlc_m1").fetchone()[0] == 0
+    row = db._conn.execute("SELECT COUNT(*) FROM dt_ohlc_m1").fetchone()
+    assert row is not None and row[0] == 0
 
 
 def test_custom_db_path() -> None:
