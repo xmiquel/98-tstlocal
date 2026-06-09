@@ -27,6 +27,9 @@
 
   const series = chart.addCandlestickSeries();
 
+  // Store raw data for tooltip lookup (Lightweight Charts strips custom props)
+  var rawData = [];
+
   // --- Custom tooltip ---
   var tooltip = document.getElementById("chart-tooltip");
 
@@ -35,7 +38,22 @@
       tooltip.style.display = "none";
       return;
     }
-    var data = param.seriesData.get(series);
+    // param.time is a UTC timestamp in seconds (business day based for daily, but fine for intraday)
+    // Find matching data point in rawData by time
+    var data = null;
+    if (rawData.length > 0) {
+      // param.time can be number (seconds) or object {year, month, day}
+      var targetTime = typeof param.time === "number" ? param.time : null;
+      if (targetTime) {
+        // Find closest data point by time (exact match for 1m, nearest for others)
+        for (var i = 0; i < rawData.length; i++) {
+          if (rawData[i].time === targetTime) {
+            data = rawData[i];
+            break;
+          }
+        }
+      }
+    }
     if (!data) {
       tooltip.style.display = "none";
       return;
@@ -74,7 +92,7 @@
       data.close.toFixed(2) +
       "</span></div>" +
       '<div class="tt-row"><span class="tt-label">V</span><span class="tt-val">' +
-      (data.volume || 0).toLocaleString() +
+      (data.tickvol || 0).toLocaleString() +
       "</span></div>" +
       '<div class="tt-row"><span class="tt-label">Spr</span><span class="tt-val">' +
       spreadVal +
@@ -106,6 +124,7 @@
         return r.json();
       })
       .then(function (data) {
+        rawData = data;  // Keep reference for tooltip lookup
         series.setData(data);
         chart.timeScale().fitContent();
       })
