@@ -23,5 +23,9 @@ htmlcov/
 *.db
 data/
 
+# Playwright browser cache — installed by `uv run playwright install chromium`
+ms-playwright/
+playwright/
+
 # Environment — local overrides (never committed)
 .env

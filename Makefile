@@ -6,13 +6,16 @@
 HOST ?= 0.0.0.0
 PORT ?= 8000
 
-.PHONY: help test lint format format-check typecheck lock-check ci run
+.PHONY: help test test-e2e lint format format-check typecheck lock-check ci run
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
 test:  ## Run pytest
 	uv run pytest
+
+test-e2e:  ## Run E2E tests with Playwright (separate server, no coverage)
+	uv run pytest -m e2e --no-cov -q
 
 lint:  ## Run ruff check
 	uv run ruff check .

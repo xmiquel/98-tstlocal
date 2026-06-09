@@ -21,6 +21,7 @@ dev = [
     "ruff~=0.15.16",
     "mypy~=2.1.0",
     "pre-commit~=4.6",
+    "pytest-playwright>=0.8.0",
 ]
 
 [tool.uv]
@@ -28,6 +29,9 @@ package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "e2e: mark test as end-to-end (requires Playwright browser)",
+]
 addopts = [
     "-ra",
     "--strict-markers",
@@ -35,6 +39,8 @@ addopts = [
     "--cov=app",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
+    "-m",
+    "not e2e",
 ]
 
 [tool.ruff]
@@ -45,7 +51,7 @@ line-length = 100
 select = ["E", "F", "I", "B", "UP", "SIM", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S603", "S607"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "tests"]
