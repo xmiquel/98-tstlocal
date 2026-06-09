@@ -1,6 +1,7 @@
 """Market data storage using DuckDB for OHLCV time-series data."""
 
 import datetime
+from contextlib import suppress
 
 import duckdb
 
@@ -17,10 +18,11 @@ class MarketDatabase:
         self._ensure_table()
 
     def _ensure_table(self) -> None:
-        """Create the dt_ohlc_m1 table if it does not exist."""
+        """Create dt_ohlc_m1 if it does not exist; migrate schema if needed."""
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS dt_ohlc_m1 (
                 datetime    TIMESTAMP,
+                symbol      VARCHAR,
                 open        DOUBLE,
                 high        DOUBLE,
                 low         DOUBLE,
@@ -32,14 +34,24 @@ class MarketDatabase:
                 fecha_carga TIMESTAMP
             )
         """)
+        # Migrate existing tables that lack the symbol column (v1 schema)
+        with suppress(Exception):
+            self._conn.execute("ALTER TABLE dt_ohlc_m1 ADD COLUMN IF NOT EXISTS symbol VARCHAR")
 
-    def ingest_csv(self, csv_path: str, origen: str, fecha_carga: datetime.datetime) -> int:
+    def ingest_csv(  # noqa: PLR0913
+        self,
+        csv_path: str,
+        symbol: str,
+        origen: str,
+        fecha_carga: datetime.datetime,
+    ) -> int:
         """Load a CSV file into dt_ohlc_m1. Returns row count."""
         self._conn.execute(
             """
             INSERT INTO dt_ohlc_m1
             SELECT
                 date::DATE + time::TIME AS datetime,
+                ? AS symbol,
                 open::DOUBLE,
                 high::DOUBLE,
                 low::DOUBLE,
@@ -51,7 +63,7 @@ class MarketDatabase:
                 ?::TIMESTAMP AS fecha_carga
             FROM read_csv_auto(?, header=true)
         """,
-            [origen, fecha_carga.isoformat(), csv_path],
+            [symbol, origen, fecha_carga.isoformat(), csv_path],
         )
         result = self._conn.execute("SELECT COUNT(*) FROM dt_ohlc_m1").fetchone()
         # COUNT(*) always produces exactly one row; fetchone will never be None

@@ -24,6 +24,7 @@ def main() -> None:
         sys.exit(1)
 
     origen = os.path.basename(csv_path)
+    symbol = os.path.splitext(origen)[0]
     fecha_carga = datetime.datetime.now()
 
     from app.market import MarketDatabase
@@ -34,7 +35,7 @@ def main() -> None:
     start = time.perf_counter()
 
     try:
-        row_count = db.ingest_csv(csv_path, origen, fecha_carga)
+        row_count = db.ingest_csv(csv_path, symbol, origen, fecha_carga)
         elapsed = time.perf_counter() - start
         print(f"Loaded {origen}: {row_count:,} rows in {elapsed:.2f}s -> dt_ohlc_m1")
     finally:
