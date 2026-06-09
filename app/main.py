@@ -61,6 +61,9 @@ def get_ohlc(
     """
     actual_limit = min(limit, 5000)
 
+    if timeframe not in MarketDatabase.INTERVAL_MAP:
+        raise HTTPException(status_code=422, detail=f"Unsupported timeframe: {timeframe}")
+
     try:
         start_date = datetime.date.fromisoformat(start) if start else None
         end_date = datetime.date.fromisoformat(end) if end else None
