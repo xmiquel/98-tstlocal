@@ -68,3 +68,10 @@ def test_type_coercion_port_string_zero_padded() -> None:
     settings = Settings(PORT="08000")  # type: ignore[arg-type]
     assert settings.PORT == 8000
     assert isinstance(settings.PORT, int)
+
+
+def test_market_db_path_default() -> None:
+    """MARKET_DB_PATH defaults to data/market.duckdb."""
+    from app.settings import settings
+
+    assert settings.MARKET_DB_PATH == "data/market.duckdb"

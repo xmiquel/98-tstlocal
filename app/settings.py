@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         DEBUG: Enable debug mode (detailed error pages, hot-reload).
         HOST: Bind address for the uvicorn dev server.
         PORT: Port number for the uvicorn dev server.
+        MARKET_DB_PATH: Path to the DuckDB market database file.
     """
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
@@ -25,6 +26,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     HOST: str = "0.0.0.0"  # noqa: S104 — intentional dev-server default
     PORT: int = 8000
+    MARKET_DB_PATH: str = "data/market.duckdb"
 
 
 settings = Settings()

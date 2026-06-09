@@ -196,7 +196,7 @@ def test_delete_button_attributes() -> None:
     body = response.text
     assert "hx-delete=" in body
     assert "hx-confirm=" in body
-    assert 'hx-target="#strategies-table"' in body
+    assert 'hx-target="#strategy-table"' in body
     # Triangulate: Edit link exists with correct href
     assert "/strategies/" in body
     assert "/edit" in body
