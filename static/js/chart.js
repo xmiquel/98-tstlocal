@@ -74,7 +74,7 @@
       data.close.toFixed(2) +
       "</span></div>" +
       '<div class="tt-row"><span class="tt-label">V</span><span class="tt-val">' +
-      (data.volume || 0).toLocaleString() +
+      (data.tickvol || 0).toLocaleString() +
       "</span></div>" +
       '<div class="tt-row"><span class="tt-label">Spr</span><span class="tt-val">' +
       spreadVal +
