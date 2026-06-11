@@ -153,10 +153,6 @@ button:hover {
   font-size: 0.9rem;
 }
 
-#chart-controls button {
-  margin-bottom: 0;
-}
-
 /* ── Chart Tooltip ─────────────────────────────────────────────────────── */
 
 /* CSS custom properties for chart tooltip theming.

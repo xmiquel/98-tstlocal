@@ -24,11 +24,14 @@ def test_symbol_selector_populated(page: Page, e2e_server: str) -> None:
 
 @pytest.mark.e2e
 def test_date_form_updates_chart(page: Page, e2e_server: str) -> None:
-    """Submitting date range triggers re-fetch and chart update."""
+    """Changing date inputs triggers chart reload via change event."""
     page.goto(f"{e2e_server}/market/chart")
     page.locator('input[name="start"]').fill("2024-01-01")
     page.locator('input[name="end"]').fill("2024-01-02")
-    page.locator('button[type="submit"]').click()
+    # Dispatch change event to trigger auto-load
+    page.evaluate(
+        "document.querySelector('input[name=\"start\"]').dispatchEvent(new Event('change'))"
+    )
     page.wait_for_timeout(1000)
     expect(page.locator("canvas").first).to_be_visible()
 
@@ -73,3 +76,63 @@ def test_tooltip_shows_tickvol_and_spread(page: Page, e2e_server: str) -> None:
     # Should contain actual values from test data (tickvol=20, spread=2)
     assert "20" in tooltip_text  # tickvol from test data
     assert "2" in tooltip_text  # spread from test data
+
+
+@pytest.mark.e2e
+def test_infinite_scroll_triggers_fetch(page: Page, e2e_server: str) -> None:
+    """Panning near left edge triggers scroll fetch, no crash."""
+    page.goto(f"{e2e_server}/market/chart")
+    page.wait_for_timeout(1500)
+
+    initial_count = page.evaluate("window.__fetchCount")
+    assert page.evaluate("window.allDataLength") > 0
+
+    # Pan to extreme left edge to trigger scroll handler
+    page.evaluate(
+        """() => {
+      var chart = window.chartApi.getChart();
+      chart.timeScale().setVisibleLogicalRange({ from: 0.5, to: 1.5 });
+    }"""
+    )
+
+    # Wait for fetchCount to increment
+    page.wait_for_function("window.__fetchCount > " + str(initial_count), timeout=5000)
+    # Verify still rendered
+    expect(page.locator("canvas").first).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_no_duplicate_bars_after_prepend(page: Page, e2e_server: str) -> None:
+    """Scroll mechanism does not cause errors when boundary is reached."""
+    page.goto(f"{e2e_server}/market/chart")
+    page.wait_for_timeout(1500)
+
+    initial_count = page.evaluate("window.__fetchCount")
+    assert page.evaluate("window.allDataLength") > 0
+
+    # Trigger scroll fetch twice
+    page.evaluate(
+        """() => {
+      var chart = window.chartApi.getChart();
+      chart.timeScale().setVisibleLogicalRange({ from: 0.5, to: 1.5 });
+    }"""
+    )
+    page.wait_for_function("window.__fetchCount > " + str(initial_count), timeout=5000)
+
+    page.evaluate(
+        """() => {
+      var chart = window.chartApi.getChart();
+      chart.timeScale().setVisibleLogicalRange({ from: 1, to: 2.5 });
+    }"""
+    )
+
+    # Verify no duplicates after any prepend that may have occurred
+    has_duplicates = page.evaluate(
+        """() => {
+      var data = window.chartApi.getAllData();
+      if (!data || data.length === 0) return false;
+      var times = data.map(function(d) { return d.time; });
+      return times.length !== new Set(times).size;
+    }"""
+    )
+    assert not has_duplicates, "Duplicate timestamps found in allData"
