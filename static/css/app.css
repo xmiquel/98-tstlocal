@@ -209,3 +209,265 @@ button:hover {
 #chart-tooltip .tt-val-c {
     color: #089981;
 }
+
+/* ── Chart Layout ──────────────────────────────────────────────────────── */
+
+.chart-layout {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.chart-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ── Indicator Panel ───────────────────────────────────────────────────── */
+
+.indicator-panel {
+    width: 260px;
+    flex-shrink: 0;
+    background: #1e222d;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    padding: 0.75rem;
+    color: #d1d4dc;
+    font-size: 0.85rem;
+    max-height: 560px;
+    overflow-y: auto;
+}
+
+.indicator-panel-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.indicator-panel-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #2a2e39;
+}
+
+.indicator-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.indicator-select-group label {
+    font-size: 0.8rem;
+    color: #787b86;
+    font-weight: 600;
+}
+
+.indicator-select {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #2a2e39;
+    border-radius: 4px;
+    background: #131722;
+    color: #d1d4dc;
+    font-size: 0.85rem;
+}
+
+.indicator-config-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid #2962FF;
+    border-radius: 4px;
+    background: transparent;
+    color: #2962FF;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 0;
+}
+
+.indicator-config-btn:hover:not(:disabled) {
+    background: #2962FF;
+    color: #fff;
+}
+
+.indicator-config-btn:disabled {
+    border-color: #2a2e39;
+    color: #555;
+    cursor: not-allowed;
+}
+
+/* ── Config Form ───────────────────────────────────────────────────────── */
+
+.indicator-config-area {
+    margin-top: 0.25rem;
+}
+
+.indicator-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: #131722;
+    border: 1px solid #2a2e39;
+    border-radius: 4px;
+}
+
+.indicator-config-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin: 0 0 0.25rem 0;
+}
+
+.indicator-param-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.indicator-param-row label {
+    font-size: 0.8rem;
+    color: #787b86;
+    font-weight: 600;
+}
+
+.indicator-param-row input {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #2a2e39;
+    border-radius: 4px;
+    background: #1e222d;
+    color: #d1d4dc;
+    font-size: 0.85rem;
+}
+
+.indicator-param-desc {
+    font-size: 0.75rem;
+    color: #555;
+    font-style: italic;
+}
+
+.indicator-submit-btn {
+    padding: 0.4rem 0.75rem;
+    border: none;
+    border-radius: 4px;
+    background: #2962FF;
+    color: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+}
+
+.indicator-submit-btn:hover {
+    background: #1e4fcc;
+}
+
+.indicator-config-error {
+    color: #FF5252;
+    font-size: 0.8rem;
+    padding: 0.4rem;
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    border-radius: 4px;
+}
+
+.indicator-config-empty {
+    color: #555;
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 0.5rem 0;
+}
+
+/* ── Active Indicator List ─────────────────────────────────────────────── */
+
+.indicator-active-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+}
+
+.indicator-empty {
+    color: #555;
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 0.5rem 0;
+}
+
+.indicator-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: #131722;
+    border: 1px solid #2a2e39;
+    border-radius: 4px;
+}
+
+.indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.indicator-label {
+    flex: 1;
+    font-size: 0.85rem;
+    color: #d1d4dc;
+    font-family: monospace;
+}
+
+.indicator-remove {
+    background: none;
+    border: none;
+    color: #787b86;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+    margin-bottom: 0;
+}
+
+.indicator-remove:hover {
+    color: #FF5252;
+}
+
+/* ── Data Panel ────────────────────────────────────────────────────────── */
+
+.data-panel {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #1e222d;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    min-height: 0;
+    font-family: monospace;
+    font-size: 12px;
+    color: #d1d4dc;
+}
+
+.data-panel .dp-title {
+    font-size: 11px;
+    color: #787b86;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2a2e39;
+    font-weight: 600;
+}
+
+.data-panel .dp-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0;
+}
+
+.data-panel .dp-label {
+    font-weight: 600;
+}
+
+.data-panel .dp-value {
+    text-align: right;
+}

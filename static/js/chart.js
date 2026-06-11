@@ -1,16 +1,19 @@
 /**
  * Candlestick chart viewer for OHLCV market data.
  * Uses Lightweight Charts v4 loaded from unpkg CDN.
+ *
+ * Exposes window.chartApi for external overlay management
+ * by chart-indicators.js.
  */
 
 (function () {
   "use strict";
 
-  const config = window.__chartConfig || {};
+  var config = window.__chartConfig || {};
   if (!config.symbol) return;
 
-  const container = document.getElementById("chart");
-  const chart = LightweightCharts.createChart(container, {
+  var container = document.getElementById("chart");
+  var chart = LightweightCharts.createChart(container, {
     layout: {
       textColor: "#d1d4dc",
       background: { type: "solid", color: "#131722" },
@@ -25,7 +28,7 @@
     },
   });
 
-  const series = chart.addCandlestickSeries();
+  var series = chart.addCandlestickSeries();
 
   // Store raw data for tooltip lookup (Lightweight Charts strips custom props)
   var rawData = [];
@@ -73,7 +76,7 @@
       dateStr = d.toLocaleString();
     }
 
-    var spreadVal = (data.spread !== undefined) ? data.spread : "--";
+    var spreadVal = data.spread !== undefined ? data.spread : "--";
 
     tooltip.innerHTML =
       '<div class="tt-time">' +
@@ -108,6 +111,9 @@
     tooltip.style.top = top + "px";
   });
 
+  // --- Reload callbacks (for chart-indicators.js etc.) ---
+  var reloadCallbacks = [];
+
   function buildUrl(sym, tf, lim, st, en) {
     let url = "/api/ohlc?symbol=" + encodeURIComponent(sym);
     url += "&timeframe=" + encodeURIComponent(tf);
@@ -124,9 +130,13 @@
         return r.json();
       })
       .then(function (data) {
-        rawData = data;  // Keep reference for tooltip lookup
+        rawData = data; // Keep reference for tooltip lookup
         series.setData(data);
         chart.timeScale().fitContent();
+        // Notify registered callbacks that new data was loaded
+        for (var i = 0; i < reloadCallbacks.length; i++) {
+          reloadCallbacks[i](sym, tf, lim, st, en);
+        }
       })
       .catch(function (err) {
         console.error("Failed to load OHLCV data:", err);
@@ -155,4 +165,32 @@
       var en = form.querySelector("[name=end]").value;
       loadData(sym, tf, parseInt(lim, 10) || 200, st, en);
     });
+
+  // --- Public API for chart-indicators.js ---
+  function getCurrentParams() {
+    var form = document.getElementById("chart-controls");
+    if (!form) return null;
+    return {
+      symbol: form.querySelector("[name=symbol]").value,
+      timeframe: form.querySelector("[name=timeframe]").value,
+      limit: parseInt(form.querySelector("[name=limit]").value, 10) || 200,
+      start: form.querySelector("[name=start]").value,
+      end: form.querySelector("[name=end]").value,
+    };
+  }
+
+  window.chartApi = {
+    getChart: function () {
+      return chart;
+    },
+    getSeries: function () {
+      return series;
+    },
+    onReload: function (cb) {
+      if (typeof cb === "function") {
+        reloadCallbacks.push(cb);
+      }
+    },
+    getCurrentParams: getCurrentParams,
+  };
 })();
