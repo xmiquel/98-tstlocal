@@ -1,0 +1,11 @@
+<div class="indicator-row" data-id="{{ overlay.id }}">
+  <span class="indicator-dot" style="background: {{ overlay.color }}"></span>
+  <span class="indicator-label">{{ overlay.label }}</span>
+  <button
+    class="indicator-remove"
+    onclick="window.__removeIndicator({{ overlay.id }})"
+    title="Remove {{ overlay.label }}"
+  >
+    &times;
+  </button>
+</div>

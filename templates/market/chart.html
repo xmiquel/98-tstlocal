@@ -32,8 +32,16 @@
     <button type="submit">Load</button>
 </form>
 
-<div id="chart" style="width: 100%; height: 500px; position: relative;">
-    <div id="chart-tooltip"></div>
+<div class="chart-layout">
+    <div class="chart-main">
+        <div id="chart" style="width: 100%; height: 500px; position: relative;">
+            <div id="chart-tooltip"></div>
+        </div>
+        <div id="data-panel" class="data-panel"></div>
+    </div>
+    <aside id="indicator-panel" class="indicator-panel">
+        {% include "indicators/panel.html" %}
+    </aside>
 </div>
 
 <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
@@ -47,4 +55,5 @@
     };
 </script>
 <script src="/static/js/chart.js"></script>
+<script src="/static/js/chart-indicators.js"></script>
 {% endblock %}

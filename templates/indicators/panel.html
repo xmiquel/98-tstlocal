@@ -1,0 +1,22 @@
+<div id="indicator-panel-inner" class="indicator-panel-inner">
+  <h3 class="indicator-panel-title">Indicators</h3>
+
+  <!-- Catalog selector — populated by JS on load -->
+  <div class="indicator-select-group">
+    <label for="indicator-select">Add indicator:</label>
+    <select id="indicator-select" name="indicator" class="indicator-select">
+      <option value="">— Select —</option>
+    </select>
+    <button type="button" id="indicator-config-btn" class="indicator-config-btn" disabled>
+      Configure
+    </button>
+  </div>
+
+  <!-- Config form area (rendered by JS from catalog data) -->
+  <div id="indicator-config-area" class="indicator-config-area"></div>
+
+  <!-- Active overlays list (managed by chart-indicators.js) -->
+  <div id="active-indicators" class="indicator-active-list">
+    <div class="indicator-empty">No indicators added.</div>
+  </div>
+</div>
