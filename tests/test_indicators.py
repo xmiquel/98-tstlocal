@@ -40,15 +40,19 @@ class TestIndicatorEngine:
     # ── Indicator correctness ─────────────────────────────────────────────
 
     def test_sma_calculates_label_and_values(self, ohlcv_df: pd.DataFrame) -> None:
-        """SMA returns label 'SMA(20)' and correct number of values."""
+        """SMA returns label 'SMA(20)' and correct number of values.
+
+        Now returns ALL points (length == input length) with None for warmup NaN.
+        """
         engine = IndicatorEngine()
         config = {"name": "SMA", "params": {"timeperiod": 20}}
         results = engine.calculate(ohlcv_df, config, "TEST", "1m")
         assert len(results) == 1
         assert results[0]["label"] == "SMA(20)"
-        assert len(results[0]["values"]) > 0
-        # SMA needs 20 bars to warm up; values start after warmup
-        assert len(results[0]["values"]) <= len(ohlcv_df) - 19
+        assert len(results[0]["values"]) == len(ohlcv_df)  # full alignment
+        # First 19 should be None (warmup), rest should be float
+        non_none = [v for v in results[0]["values"] if v["value"] is not None]
+        assert len(non_none) == len(ohlcv_df) - 19
         for v in results[0]["values"]:
             assert "time" in v
             assert "value" in v
@@ -71,10 +75,11 @@ class TestIndicatorEngine:
         results = engine.calculate(ohlcv_df, config, "TEST", "1m")
         assert len(results) == 1
         assert results[0]["label"] == "RSI(14)"
-        assert len(results[0]["values"]) > 0
-        # RSI values should be between 0 and 100
+        assert len(results[0]["values"]) == len(ohlcv_df)  # full alignment
+        # RSI values should be between 0 and 100 (skip None warmup)
         for v in results[0]["values"]:
-            assert 0 <= v["value"] <= 100
+            if v["value"] is not None:
+                assert 0 <= v["value"] <= 100
 
     def test_macd_returns_multiple_lines(self, ohlcv_df: pd.DataFrame) -> None:
         """MACD returns three result lines: MACD, MACD_SIGNAL, MACD_HIST."""
@@ -127,8 +132,12 @@ class TestIndicatorEngine:
         result_10 = engine.calculate(ohlcv_df, config_10, "TEST", "1m")
         result_50 = engine.calculate(ohlcv_df, config_50, "TEST", "1m")
 
-        # Different periods should give different value counts
-        assert len(result_10[0]["values"]) != len(result_50[0]["values"])
+        # Both return full alignment (same length), but non-None values differ
+        assert len(result_10[0]["values"]) == len(result_50[0]["values"]) == len(ohlcv_df)
+        # Compare first non-None value to ensure different results
+        val_10 = next(v["value"] for v in result_10[0]["values"] if v["value"] is not None)
+        val_50 = next(v["value"] for v in result_50[0]["values"] if v["value"] is not None)
+        assert val_10 != val_50
 
     def test_cache_key_includes_symbol(self, ohlcv_df: pd.DataFrame) -> None:
         """Same indicator/params but different symbol => separate cache entries."""
@@ -154,16 +163,22 @@ class TestIndicatorEngine:
 
     # ── NaN handling ──────────────────────────────────────────────────────
 
-    def test_nan_values_dropped_from_output(self, ohlcv_df: pd.DataFrame) -> None:
-        """NaN values from warmup period are not present in output."""
+    def test_nan_values_preserved_as_none_for_alignment(self, ohlcv_df: pd.DataFrame) -> None:
+        """NaN values from warmup period are preserved as None for time alignment."""
         engine = IndicatorEngine()
         config = {"name": "SMA", "params": {"timeperiod": 200}}
         results = engine.calculate(ohlcv_df, config, "TEST", "1m")
         assert len(results) == 1
+        assert len(results[0]["values"]) == len(ohlcv_df)  # full alignment
+        # First 199 should be None (warmup), last 51 should have values
+        none_count = sum(1 for v in results[0]["values"] if v["value"] is None)
+        assert none_count == 199
+        non_none_count = sum(1 for v in results[0]["values"] if v["value"] is not None)
+        assert non_none_count == 51
+        # Verify no actual NaN survived (None instead)
         for v in results[0]["values"]:
-            assert v["value"] is not None
-            # Verify no NaN survived
-            assert not (isinstance(v["value"], float) and pd.isna(v["value"]))
+            if v["value"] is not None:
+                assert not (isinstance(v["value"], float) and pd.isna(v["value"]))
 
     # ── Error handling ────────────────────────────────────────────────────
 
