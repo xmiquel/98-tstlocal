@@ -36,19 +36,19 @@ Chain strategy: pending
 
 ## Phase 3: Frontend
 
-- [ ] 3.1 Refactor `static/js/chart.js`: expose `window.chartApi` (getChart, getSeries, onReload, getCurrentParams)
-- [ ] 3.2 Create `static/js/chart-indicators.js`: overlay lifecycle, color palette (blue/orange/purple/red/green), `subscribeCrosshairMove` data panel
-- [ ] 3.3 Create HTMX partials: `templates/indicators/panel.html`, `config_form.html`, `row.html`
-- [ ] 3.4 Update `templates/market/chart.html`: add indicator panel div, data panel div, script includes
-- [ ] 3.5 Add localStorage `trading:indicators:active` save/restore in chart-indicators.js
-- [ ] 3.6 Add indicator panel + data panel + legend styles to `static/css/app.css`
+- [x] 3.1 Refactor `static/js/chart.js`: expose `window.chartApi` (getChart, getSeries, onReload, getCurrentParams)
+- [x] 3.2 Create `static/js/chart-indicators.js`: overlay lifecycle, color palette (blue/orange/purple/red/green), `subscribeCrosshairMove` data panel
+- [x] 3.3 Create HTMX partials: `templates/indicators/panel.html`, `config_form.html`, `row.html`
+- [x] 3.4 Update `templates/market/chart.html`: add indicator panel div, data panel div, script includes
+- [x] 3.5 Add localStorage `trading:indicators:active` save/restore in chart-indicators.js
+- [x] 3.6 Add indicator panel + data panel + legend styles to `static/css/app.css`
 
 ## Phase 4: Testing & Verification
 
-- [ ] 4.1 E2E test: add SMA(20) → overlay renders (Playwright) in `tests/e2e/test_indicators.py`
-- [ ] 4.2 E2E test: localStorage config survives page reload in `tests/e2e/test_indicators.py`
+- [x] 4.1 E2E test: add SMA(20) → overlay renders (Playwright) in `tests/e2e/test_indicators.py`
+- [x] 4.2 E2E test: localStorage config survives page reload in `tests/e2e/test_indicators.py`
 - [ ] 4.3 Verify: `uv run pytest`, `uv run mypy --strict`, coverage >= 80%, all green
 
 ## Phase 5: Polish
 
-- [ ] 5.1 Verify chart tooltip uses CSS variables (data panel follows same pattern)
+- [x] 5.1 Verify chart tooltip uses CSS variables (data panel follows same pattern)
