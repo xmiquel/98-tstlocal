@@ -59,9 +59,8 @@ def market_with_data(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, N
     Uses a temp file so data survives across MarketDatabase connections.
     DuckDB needs to create its own database file, so we unlink the temp file first.
     """
-    tmp = tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
+        tmp_path = tmp.name
     os.unlink(tmp_path)  # DuckDB must create its own database file
 
     monkeypatch.setattr("app.market.settings.MARKET_DB_PATH", tmp_path)
