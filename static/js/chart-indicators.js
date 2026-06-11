@@ -188,6 +188,7 @@
     activeOverlays.push(overlay);
 
     renderOverlayList();
+    saveToStorage();
     return id;
   }
 
@@ -205,6 +206,7 @@
     chart.removeSeries(overlay.series);
     activeOverlays.splice(idx, 1);
     renderOverlayList();
+    saveToStorage();
 
     if (activeOverlays.length === 0 && dataPanel) {
       dataPanel.innerHTML = "";
@@ -301,6 +303,7 @@
             overlay.series.setData(result.values);
             overlay.label = result.label;
             renderOverlayList();
+            saveToStorage();
           })
           .catch(function (err) {
             console.error(
@@ -348,6 +351,73 @@
     activeList.innerHTML = html;
   }
 
+  // ── localStorage persistence ────────────────────────────────────────────
+
+  function saveToStorage() {
+    try {
+      var configs = [];
+      for (var i = 0; i < activeOverlays.length; i++) {
+        var o = activeOverlays[i];
+        configs.push({
+          id: o.id,
+          indicator: o.indicator,
+          params: o.params,
+        });
+      }
+      localStorage.setItem(
+        "trading:indicators:active",
+        JSON.stringify(configs)
+      );
+    } catch (e) {
+      console.error("Failed to save indicators to localStorage:", e);
+    }
+  }
+
+  function restoreFromStorage(symbol, timeframe) {
+    try {
+      var saved = localStorage.getItem("trading:indicators:active");
+      if (!saved) return;
+      var configs = JSON.parse(saved);
+      if (!Array.isArray(configs) || configs.length === 0) return;
+
+      for (var i = 0; i < configs.length; i++) {
+        (function (config) {
+          var body = JSON.stringify({
+            symbol: symbol,
+            timeframe: timeframe,
+            indicator: config.indicator,
+            params: config.params,
+          });
+          fetch("/api/indicators/calculate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: body,
+          })
+            .then(function (r) {
+              if (!r.ok) throw new Error("Restore calculation failed");
+              return r.json();
+            })
+            .then(function (result) {
+              addOverlay(
+                config.indicator,
+                config.params,
+                result.values,
+                result.label
+              );
+            })
+            .catch(function (err) {
+              console.error(
+                "Failed to restore indicator " + config.indicator + ":",
+                err
+              );
+            });
+        })(configs[i]);
+      }
+    } catch (e) {
+      console.error("Failed to parse saved indicators:", e);
+    }
+  }
+
   // ── Crosshair data panel ───────────────────────────────────────────────
 
   function updateDataPanel(param) {
@@ -385,9 +455,15 @@
     updateDataPanel(param);
   });
 
-  // ── Register reload callback ───────────────────────────────────────────
+  // ── Register reload callbacks ──────────────────────────────────────────
+
+  var restored = false;
 
   window.chartApi.onReload(function (sym, tf) {
+    if (!restored) {
+      restored = true;
+      restoreFromStorage(sym, tf);
+    }
     reloadAll(sym, tf);
   });
 

@@ -159,29 +159,39 @@ button:hover {
 
 /* ── Chart Tooltip ─────────────────────────────────────────────────────── */
 
+/* CSS custom properties for chart tooltip theming.
+   Override at .theme-light or a parent scope to switch themes. */
+:root {
+    --chart-tooltip-bg: #1e222d;
+    --chart-tooltip-text: #d1d4dc;
+    --chart-tooltip-border: #2a2e39;
+    --chart-tooltip-label: #787b86;
+    --chart-tooltip-green: #089981;
+}
+
 #chart-tooltip {
     display: none;
     position: absolute;
     z-index: 100;
     pointer-events: none;
-    background: #1e222d;
-    border: 1px solid #2a2e39;
+    background: var(--chart-tooltip-bg);
+    border: 1px solid var(--chart-tooltip-border);
     border-radius: 6px;
     padding: 8px 12px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
     font-size: 12px;
     line-height: 1.5;
-    color: #d1d4dc;
+    color: var(--chart-tooltip-text);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     min-width: 140px;
 }
 
 #chart-tooltip .tt-time {
     font-size: 11px;
-    color: #787b86;
+    color: var(--chart-tooltip-label);
     margin-bottom: 4px;
     padding-bottom: 4px;
-    border-bottom: 1px solid #2a2e39;
+    border-bottom: 1px solid var(--chart-tooltip-border);
 }
 
 #chart-tooltip .tt-row {
@@ -191,23 +201,23 @@ button:hover {
 }
 
 #chart-tooltip .tt-label {
-    color: #787b86;
+    color: var(--chart-tooltip-label);
 }
 
 #chart-tooltip .tt-val-o {
-    color: #089981;
+    color: var(--chart-tooltip-green);
 }
 
 #chart-tooltip .tt-val-h {
-    color: #d1d4dc;
+    color: var(--chart-tooltip-text);
 }
 
 #chart-tooltip .tt-val-l {
-    color: #d1d4dc;
+    color: var(--chart-tooltip-text);
 }
 
 #chart-tooltip .tt-val-c {
-    color: #089981;
+    color: var(--chart-tooltip-green);
 }
 
 /* ── Chart Layout ──────────────────────────────────────────────────────── */
