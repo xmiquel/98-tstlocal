@@ -280,7 +280,12 @@
   // ── Reload all active overlays ─────────────────────────────────────────
 
   function reloadAll(symbol, timeframe) {
-    if (activeOverlays.length === 0) return;
+    if (activeOverlays.length === 0) {
+      console.log("[Indicators] reloadAll: no active overlays");
+      return;
+    }
+
+    console.log("[Indicators] reloadAll for", symbol, timeframe, "-", activeOverlays.length, "overlays");
 
     for (var i = 0; i < activeOverlays.length; i++) {
       (function (overlay) {
@@ -296,24 +301,41 @@
           body: body,
         })
           .then(function (r) {
-            if (!r.ok) throw new Error("Indicator reload failed");
+            if (!r.ok) {
+              return r.text().then(function (text) {
+                throw new Error("Indicator reload failed: " + r.status + " " + text);
+              });
+            }
             return r.json();
           })
           .then(function (result) {
+            console.log("[Indicators] reload success:", overlay.label, "points:", result.values ? result.values.length : 0);
             overlay.series.setData(result.values);
             overlay.label = result.label;
             renderOverlayList();
             saveToStorage();
           })
           .catch(function (err) {
-            console.error(
-              "Failed to reload indicator " + overlay.label + ":",
-              err
-            );
+            console.error("[Indicators] Failed to reload", overlay.label, ":", err);
           });
       })(activeOverlays[i]);
     }
   }
+
+  // ── Manual recalculation trigger ────────────────────────────────────────
+
+  function recalcAll() {
+    var chartParams = window.chartApi.getCurrentParams();
+    if (!chartParams) {
+      console.error("[Indicators] recalcAll: no chart params");
+      return;
+    }
+    console.log("[Indicators] Manual recalc triggered");
+    reloadAll(chartParams.symbol, chartParams.timeframe);
+  }
+
+  // Expose for debugging
+  window.__recalcIndicators = recalcAll;
 
   // ── Overlay list rendering ─────────────────────────────────────────────
 
@@ -483,6 +505,14 @@
       configBtn.disabled = !this.value;
       // Clear config area when selection changes
       if (configArea) configArea.innerHTML = "";
+    });
+  }
+
+  // Manual recalc button
+  var recalcBtn = document.getElementById("indicator-recalc-btn");
+  if (recalcBtn) {
+    recalcBtn.addEventListener("click", function () {
+      recalcAll();
     });
   }
 
