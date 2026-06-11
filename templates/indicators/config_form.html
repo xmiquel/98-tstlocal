@@ -1,0 +1,42 @@
+{% if error %}
+<div class="indicator-config-error">{{ error }}</div>
+{% elif indicator %}
+<form id="indicator-config-form" class="indicator-config-form"
+      onsubmit="return window.__submitIndicatorConfig(event)">
+  <input type="hidden" name="indicator" value="{{ indicator.name }}">
+  <h4 class="indicator-config-name">{{ indicator.name }}</h4>
+  {% for param in indicator.params %}
+  <div class="indicator-param-row">
+    <label for="param-{{ param.name }}">{{ param.name }}</label>
+    {% if param.type == "integer" %}
+    <input
+      type="number"
+      id="param-{{ param.name }}"
+      name="{{ param.name }}"
+      value="{{ param.default }}"
+      step="1"
+    />
+    {% elif param.type == "float" or param.type == "number" %}
+    <input
+      type="number"
+      id="param-{{ param.name }}"
+      name="{{ param.name }}"
+      value="{{ param.default }}"
+      step="0.01"
+    />
+    {% else %}
+    <input
+      type="text"
+      id="param-{{ param.name }}"
+      name="{{ param.name }}"
+      value="{{ param.default }}"
+    />
+    {% endif %}
+    <span class="indicator-param-desc">{{ param.description }}</span>
+  </div>
+  {% endfor %}
+  <button type="submit" class="indicator-submit-btn">Apply</button>
+</form>
+{% else %}
+<div class="indicator-config-empty">Select an indicator and click Configure.</div>
+{% endif %}

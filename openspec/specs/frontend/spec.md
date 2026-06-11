@@ -97,6 +97,55 @@ The system SHALL provide HTML form routes for creating, editing, and deleting st
 - THEN the response status is 422 or 400
 - AND the response contains a validation error message for the name field
 
+### Requirement: CSS Custom Properties Color Architecture
+
+The system SHALL define all application color values as CSS custom properties on `:root` in `static/css/app.css`. Every CSS rule SHALL reference these variables via `var(--*)` rather than hardcoded hex codes. This enables systematic theming without modifying individual rules.
+
+#### Scenario: All colors sourced from custom properties
+
+- GIVEN `static/css/app.css` is loaded
+- WHEN inspecting any element's computed color
+- THEN the value originates from a `var(--*)` reference
+- AND no hardcoded color appears outside the `:root` block
+
+#### Scenario: Variable rename propagates everywhere
+
+- GIVEN `--primary` is defined in `:root`
+- WHEN `--primary` is changed to a different color
+- THEN all elements referencing `var(--primary)` reflect the new color
+- AND no element retains the old hardcoded value
+
+### Requirement: Dark Mode Overrides
+
+The system SHALL define dark-mode color overrides under `[data-theme="dark"]` in `static/css/app.css`. When the `<html>` element carries `data-theme="dark"`, all CSS custom properties SHALL re-evaluate to dark-appropriate values.
+
+#### Scenario: Dark mode applied via attribute selector
+
+- GIVEN the page is rendering
+- WHEN `data-theme="dark"` is set on `<html>`
+- THEN `--bg` evaluates to a dark color
+- AND `--text` evaluates to a light color
+- AND the page renders in dark mode without additional CSS
+
+### Requirement: Basic UI Component Styling
+
+The system SHALL define basic styles for `.btn`, `.toolbar`, `.error-summary`, `.form-group`, `.form-actions`, and `.cancel-link` in `static/css/app.css`. All color values in these rules SHALL reference CSS custom properties.
+
+#### Scenario: Button styled with CSS variables
+
+- GIVEN `static/css/app.css` is loaded
+- WHEN an element has class `.btn`
+- THEN it SHALL use `var(--btn-bg)` and `var(--btn-text)` for colors
+- AND switching to dark mode updates button appearance automatically
+
+#### Scenario: Error summary adapts to theme
+
+- GIVEN an element with class `.error-summary`
+- WHEN the page is in light mode
+- THEN the error summary has sufficient contrast for readability
+- WHEN the page toggles to dark mode
+- THEN the error summary colors adapt without separate CSS rules
+
 ## Out of Scope (Non-Requirements)
 
 Pagination, sorting, and search filtering via HTML are not included.

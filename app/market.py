@@ -2,8 +2,10 @@
 
 import datetime
 from contextlib import suppress
+from typing import Any
 
 import duckdb
+import pandas as pd
 
 from app.settings import settings
 
@@ -122,18 +124,40 @@ class MarketDatabase:
             ).fetchall()
             rows.reverse()
 
-        return [
-            {
-                "time": int(row[0].timestamp()),
-                "open": float(row[1]),
-                "high": float(row[2]),
-                "low": float(row[3]),
-                "close": float(row[4]),
-                "tickvol": int(row[5]),
-                "spread": int(row[6]),
-            }
-            for row in rows
-        ]
+        return [self._row_to_dict(row) for row in rows]
+
+    def _query_ohlc_raw_before(
+        self,
+        symbol: str,
+        limit: int,
+        before_ts: int,
+    ) -> list[dict[str, object]]:
+        """Query raw 1-minute bars strictly before a UNIX timestamp."""
+        rows = self._conn.execute(
+            """
+            SELECT datetime, open, high, low, close, tickvol, spread
+            FROM dt_ohlc_m1
+            WHERE symbol = ? AND datetime < to_timestamp(?::DOUBLE)
+            ORDER BY datetime DESC
+            LIMIT ?
+            """,
+            [symbol, before_ts, limit],
+        ).fetchall()
+        rows.reverse()
+        return [self._row_to_dict(row) for row in rows]
+
+    @staticmethod
+    def _row_to_dict(row: Any) -> dict[str, object]:
+        """Convert a DuckDB result row to an OHLCV dict."""
+        return {
+            "time": int(row[0].timestamp()),
+            "open": float(row[1]),
+            "high": float(row[2]),
+            "low": float(row[3]),
+            "close": float(row[4]),
+            "tickvol": int(row[5]),
+            "spread": int(row[6]),
+        }
 
     def _query_ohlc_aggregated(
         self,
@@ -181,18 +205,32 @@ class MarketDatabase:
             params = [interval, symbol, limit]
 
         result = self._conn.execute(sql, params).fetchall()
-        return [
-            {
-                "time": int(row[0].timestamp()),
-                "open": float(row[1]),
-                "high": float(row[2]),
-                "low": float(row[3]),
-                "close": float(row[4]),
-                "tickvol": int(row[5]),
-                "spread": int(row[6]),
-            }
-            for row in result
-        ]
+        return [self._row_to_dict(row) for row in result]
+
+    def _query_ohlc_aggregated_before(
+        self,
+        symbol: str,
+        limit: int,
+        before_ts: int,
+        bucket: str,
+    ) -> list[dict[str, object]]:
+        """Query aggregated OHLCV bars strictly before a UNIX timestamp."""
+        sql = """
+            SELECT t, open, high, low, close, tickvol, spread FROM (
+                SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                       first(open ORDER BY datetime) AS open,
+                       max(high) AS high,
+                       min(low) AS low,
+                       last(close ORDER BY datetime) AS close,
+                       sum(tickvol) AS tickvol,
+                       first(spread ORDER BY datetime) AS spread
+                FROM dt_ohlc_m1
+                WHERE symbol = ? AND datetime < to_timestamp(?::DOUBLE)
+                GROUP BY t ORDER BY t DESC LIMIT ?
+            ) sub ORDER BY t
+        """
+        rows = self._conn.execute(sql, [bucket, symbol, before_ts, limit]).fetchall()
+        return [self._row_to_dict(row) for row in rows]
 
     def query_ohlc(
         self,
@@ -201,19 +239,200 @@ class MarketDatabase:
         limit: int = 200,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        before: int | None = None,
     ) -> list[dict[str, object]]:
         """Query OHLCV bars from dt_ohlc_m1.
 
         Routes 1m to raw query, other timeframes to time_bucket aggregation.
-        Two modes:
+        Three modes:
         - Date range mode (start_date provided): filters by datetime range.
         - Limit mode (default): returns the last N bars and reverses to ascending.
+        - Cursor mode (before provided without start_date): returns N bars
+          strictly before the given UNIX timestamp.
         """
+        actual_limit = min(limit, 5000)
         interval = self.INTERVAL_MAP.get(timeframe)
+
+        # Before-cursor mode (ignored if start_date is also provided)
+        if before is not None and start_date is None:
+            if timeframe == "1m":
+                return self._query_ohlc_raw_before(symbol, actual_limit, before)
+            if interval is not None:
+                return self._query_ohlc_aggregated_before(symbol, actual_limit, before, interval)
+            msg = f"Unsupported timeframe: {timeframe}"
+            raise ValueError(msg)
+
         if timeframe == "1m":
-            return self._query_ohlc_raw(symbol, limit, start_date, end_date)
+            return self._query_ohlc_raw(symbol, actual_limit, start_date, end_date)
         if interval is not None:
-            return self._query_ohlc_aggregated(symbol, interval, limit, start_date, end_date)
+            return self._query_ohlc_aggregated(symbol, interval, actual_limit, start_date, end_date)
+        msg = f"Unsupported timeframe: {timeframe}"
+        raise ValueError(msg)
+
+    def _query_ohlc_raw_as_df(
+        self,
+        symbol: str,
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> pd.DataFrame:
+        """Query raw 1-minute bars as a DataFrame with volume."""
+        if start_date is not None:
+            end = end_date or datetime.date(9999, 12, 31)
+            rows = self._conn.execute(
+                """
+                SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+                FROM dt_ohlc_m1
+                WHERE symbol = ? AND datetime >= ? AND datetime < ?
+                ORDER BY datetime
+                """,
+                [symbol, start_date, end],
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                """
+                SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+                FROM dt_ohlc_m1
+                WHERE symbol = ?
+                ORDER BY datetime DESC
+                LIMIT ?
+                """,
+                [symbol, limit],
+            ).fetchall()
+            rows.reverse()
+
+        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+
+    def _query_ohlc_raw_as_df_before(
+        self,
+        symbol: str,
+        limit: int,
+        before_ts: int,
+    ) -> pd.DataFrame:
+        """Query raw 1-minute bars strictly before a UNIX timestamp as DataFrame."""
+        rows = self._conn.execute(
+            """
+            SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+            FROM dt_ohlc_m1
+            WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
+            ORDER BY datetime DESC
+            LIMIT ?
+            """,
+            [symbol, before_ts, limit],
+        ).fetchall()
+        rows.reverse()
+        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+
+    def _query_ohlc_aggregated_as_df(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> pd.DataFrame:
+        """Query aggregated OHLCV bars as a DataFrame with volume."""
+        if start_date is not None:
+            sql = """
+                SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+                    SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                           first(open ORDER BY datetime) AS open,
+                           max(high) AS high,
+                           min(low) AS low,
+                           last(close ORDER BY datetime) AS close,
+                           sum(volume) AS volume
+                    FROM dt_ohlc_m1
+                    WHERE symbol = ? AND datetime >= ? AND datetime < ?
+                    GROUP BY t ORDER BY t
+                ) sub
+            """
+            params: list[object] = [
+                interval,
+                symbol,
+                start_date,
+                end_date or datetime.date(9999, 12, 31),
+            ]
+        else:
+            sql = """
+                SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+                    SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                           first(open ORDER BY datetime) AS open,
+                           max(high) AS high,
+                           min(low) AS low,
+                           last(close ORDER BY datetime) AS close,
+                           sum(volume) AS volume
+                    FROM dt_ohlc_m1
+                    WHERE symbol = ?
+                    GROUP BY t ORDER BY t DESC LIMIT ?
+                ) sub ORDER BY time
+            """
+            params = [interval, symbol, limit]
+
+        rows = self._conn.execute(sql, params).fetchall()
+        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+
+    def _query_ohlc_aggregated_as_df_before(
+        self,
+        symbol: str,
+        limit: int,
+        before_ts: int,
+        bucket: str,
+    ) -> pd.DataFrame:
+        """Query aggregated OHLCV bars strictly before a UNIX timestamp as DataFrame."""
+        rows = self._conn.execute(
+            """
+            SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+                SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
+                       first(open ORDER BY datetime) AS open,
+                       max(high) AS high,
+                       min(low) AS low,
+                       last(close ORDER BY datetime) AS close,
+                       sum(volume) AS volume
+                FROM dt_ohlc_m1
+                WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
+                GROUP BY t ORDER BY t DESC LIMIT ?
+            ) sub ORDER BY time
+            """,
+            [bucket, symbol, before_ts, limit],
+        ).fetchall()
+        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+
+    def query_ohlc_as_df(
+        self,
+        symbol: str,
+        timeframe: str = "1m",
+        limit: int = 200,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+        before: int | None = None,
+    ) -> pd.DataFrame:
+        """Query OHLCV bars as a pandas DataFrame.
+
+        Same parameters and semantics as query_ohlc(). Returns a DataFrame
+        with columns time (int), open (float), high (float), low (float),
+        close (float), volume (int) ordered by time ascending.
+        Uses the existing DuckDB connection — no new connection opened.
+        """
+        actual_limit = min(limit, 5000)
+        interval = self.INTERVAL_MAP.get(timeframe)
+
+        # Before-cursor mode (ignored if start_date is also provided)
+        if before is not None and start_date is None:
+            if timeframe == "1m":
+                return self._query_ohlc_raw_as_df_before(symbol, actual_limit, before)
+            if interval is not None:
+                return self._query_ohlc_aggregated_as_df_before(
+                    symbol, actual_limit, before, interval
+                )
+            msg = f"Unsupported timeframe: {timeframe}"
+            raise ValueError(msg)
+
+        if timeframe == "1m":
+            return self._query_ohlc_raw_as_df(symbol, actual_limit, start_date, end_date)
+        if interval is not None:
+            return self._query_ohlc_aggregated_as_df(
+                symbol, interval, actual_limit, start_date, end_date
+            )
         msg = f"Unsupported timeframe: {timeframe}"
         raise ValueError(msg)
 

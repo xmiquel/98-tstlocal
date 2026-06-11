@@ -37,3 +37,45 @@ class Strategy(StrategyCreate):
 
     id: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ── Indicator API Models ──────────────────────────────────────────────────
+
+
+class IndicatorParam(BaseModel):
+    """Parameter definition for an indicator in the catalog."""
+
+    name: str
+    type: str
+    default: float | int | str
+    description: str
+
+
+class CatalogEntry(BaseModel):
+    """An entry in the indicator catalog."""
+
+    name: str
+    params: list[IndicatorParam]
+
+
+class IndicatorRequest(BaseModel):
+    """Request model for POST /api/indicators/calculate."""
+
+    symbol: str
+    timeframe: str = "1m"
+    indicator: str
+    params: dict[str, float | int | str] = {}
+
+
+class IndicatorValue(BaseModel):
+    """A single time-value pair for indicator output."""
+
+    time: int
+    value: float
+
+
+class IndicatorResult(BaseModel):
+    """Response model for a single calculated indicator line."""
+
+    label: str
+    values: list[IndicatorValue]
