@@ -137,7 +137,7 @@ class MarketDatabase:
             """
             SELECT datetime, open, high, low, close, tickvol, spread
             FROM dt_ohlc_m1
-            WHERE symbol = ? AND datetime < to_timestamp(?::DOUBLE)
+            WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
             ORDER BY datetime DESC
             LIMIT ?
             """,
@@ -148,9 +148,9 @@ class MarketDatabase:
 
     @staticmethod
     def _row_to_dict(row: Any) -> dict[str, object]:
-        """Convert a DuckDB result row to an OHLCV dict."""
+        """Convert a DuckDB result row to an OHLCV dict (time as UTC epoch)."""
         return {
-            "time": int(row[0].timestamp()),
+            "time": int(row[0].replace(tzinfo=datetime.UTC).timestamp()),
             "open": float(row[1]),
             "high": float(row[2]),
             "low": float(row[3]),
@@ -225,7 +225,7 @@ class MarketDatabase:
                        sum(tickvol) AS tickvol,
                        first(spread ORDER BY datetime) AS spread
                 FROM dt_ohlc_m1
-                WHERE symbol = ? AND datetime < to_timestamp(?::DOUBLE)
+                WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
                 GROUP BY t ORDER BY t DESC LIMIT ?
             ) sub ORDER BY t
         """
@@ -269,6 +269,11 @@ class MarketDatabase:
         msg = f"Unsupported timeframe: {timeframe}"
         raise ValueError(msg)
 
+    @staticmethod
+    def _df_ts(col: pd.Series) -> pd.Series:
+        """Convert a Series of naive datetime objects to UTC epoch seconds (int)."""
+        return col.apply(lambda dt: int(dt.replace(tzinfo=datetime.UTC).timestamp()))
+
     def _query_ohlc_raw_as_df(
         self,
         symbol: str,
@@ -281,7 +286,7 @@ class MarketDatabase:
             end = end_date or datetime.date(9999, 12, 31)
             rows = self._conn.execute(
                 """
-                SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+                SELECT datetime, open, high, low, close, volume
                 FROM dt_ohlc_m1
                 WHERE symbol = ? AND datetime >= ? AND datetime < ?
                 ORDER BY datetime
@@ -291,7 +296,7 @@ class MarketDatabase:
         else:
             rows = self._conn.execute(
                 """
-                SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+                SELECT datetime, open, high, low, close, volume
                 FROM dt_ohlc_m1
                 WHERE symbol = ?
                 ORDER BY datetime DESC
@@ -301,7 +306,9 @@ class MarketDatabase:
             ).fetchall()
             rows.reverse()
 
-        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+        df = pd.DataFrame(rows, columns=["datetime", "open", "high", "low", "close", "volume"])
+        df["time"] = self._df_ts(df["datetime"])
+        return df.drop(columns=["datetime"])[["time", "open", "high", "low", "close", "volume"]]
 
     def _query_ohlc_raw_as_df_before(
         self,
@@ -312,7 +319,7 @@ class MarketDatabase:
         """Query raw 1-minute bars strictly before a UNIX timestamp as DataFrame."""
         rows = self._conn.execute(
             """
-            SELECT CAST(epoch(datetime) AS BIGINT) AS time, open, high, low, close, volume
+            SELECT datetime, open, high, low, close, volume
             FROM dt_ohlc_m1
             WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
             ORDER BY datetime DESC
@@ -321,7 +328,9 @@ class MarketDatabase:
             [symbol, before_ts, limit],
         ).fetchall()
         rows.reverse()
-        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+        df = pd.DataFrame(rows, columns=["datetime", "open", "high", "low", "close", "volume"])
+        df["time"] = self._df_ts(df["datetime"])
+        return df.drop(columns=["datetime"])[["time", "open", "high", "low", "close", "volume"]]
 
     def _query_ohlc_aggregated_as_df(
         self,
@@ -334,7 +343,7 @@ class MarketDatabase:
         """Query aggregated OHLCV bars as a DataFrame with volume."""
         if start_date is not None:
             sql = """
-                SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+                SELECT t, open, high, low, close, volume FROM (
                     SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
                            first(open ORDER BY datetime) AS open,
                            max(high) AS high,
@@ -354,7 +363,7 @@ class MarketDatabase:
             ]
         else:
             sql = """
-                SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+                SELECT t, open, high, low, close, volume FROM (
                     SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
                            first(open ORDER BY datetime) AS open,
                            max(high) AS high,
@@ -364,12 +373,14 @@ class MarketDatabase:
                     FROM dt_ohlc_m1
                     WHERE symbol = ?
                     GROUP BY t ORDER BY t DESC LIMIT ?
-                ) sub ORDER BY time
+                ) sub ORDER BY t
             """
             params = [interval, symbol, limit]
 
         rows = self._conn.execute(sql, params).fetchall()
-        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+        df = pd.DataFrame(rows, columns=["t", "open", "high", "low", "close", "volume"])
+        df["time"] = self._df_ts(df["t"])
+        return df.drop(columns=["t"])[["time", "open", "high", "low", "close", "volume"]]
 
     def _query_ohlc_aggregated_as_df_before(
         self,
@@ -381,7 +392,7 @@ class MarketDatabase:
         """Query aggregated OHLCV bars strictly before a UNIX timestamp as DataFrame."""
         rows = self._conn.execute(
             """
-            SELECT CAST(epoch(t) AS BIGINT) AS time, open, high, low, close, volume FROM (
+            SELECT t, open, high, low, close, volume FROM (
                 SELECT time_bucket(CAST(? AS INTERVAL), datetime) AS t,
                        first(open ORDER BY datetime) AS open,
                        max(high) AS high,
@@ -389,13 +400,15 @@ class MarketDatabase:
                        last(close ORDER BY datetime) AS close,
                        sum(volume) AS volume
                 FROM dt_ohlc_m1
-                WHERE symbol = ? AND CAST(epoch(datetime) AS BIGINT) < ?
+                WHERE symbol = ? AND datetime < to_timestamp(?::DOUBLE)
                 GROUP BY t ORDER BY t DESC LIMIT ?
-            ) sub ORDER BY time
+            ) sub ORDER BY t
             """,
             [bucket, symbol, before_ts, limit],
         ).fetchall()
-        return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"])
+        df = pd.DataFrame(rows, columns=["t", "open", "high", "low", "close", "volume"])
+        df["time"] = self._df_ts(df["t"])
+        return df.drop(columns=["t"])[["time", "open", "high", "low", "close", "volume"]]
 
     def query_ohlc_as_df(
         self,
