@@ -463,7 +463,7 @@
     for (var i = 0; i < activeOverlays.length; i++) {
       var overlay = activeOverlays[i];
       var seriesData = param.seriesData.get(overlay.series);
-      if (seriesData && typeof seriesData.value !== "undefined") {
+      if (seriesData && typeof seriesData.value !== "undefined" && seriesData.value !== null) {
         hasValues = true;
         html +=
           '<div class="dp-row">' +
