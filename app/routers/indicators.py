@@ -48,6 +48,9 @@ def calculate_indicator(request: IndicatorRequest) -> JSONResponse:
     # Use provided data or query DB
     if request.data:
         df = pd.DataFrame(request.data)
+        # Accept 'tickvol' as alias for 'volume' (API returns tickvol)
+        if "tickvol" in df.columns and "volume" not in df.columns:
+            df = df.rename(columns={"tickvol": "volume"})
         # Ensure required columns exist
         required = {"time", "open", "high", "low", "close", "volume"}
         if not required.issubset(df.columns):
