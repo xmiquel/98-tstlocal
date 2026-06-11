@@ -19,6 +19,7 @@ from starlette.templating import Jinja2Templates
 
 from app.database import Base
 from app.market import MarketDatabase
+from app.routers.indicators import router as indicators_router
 from app.schemas import StrategyCreate, StrategyUpdate
 from app.settings import settings
 from app.store import store
@@ -38,6 +39,7 @@ app: FastAPI = FastAPI(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(indicators_router)
 templates = Jinja2Templates(directory="templates")
 
 
@@ -54,15 +56,32 @@ def get_ohlc(
     limit: int = Query(200, ge=1),
     start: str | None = Query(None),
     end: str | None = Query(None),
+    before: int | None = Query(None, description="UNIX timestamp cursor (seconds)"),
 ) -> JSONResponse:
     """Return OHLCV bars as JSON array.
 
     The limit is capped at 5000. Start/end are ISO date strings.
+    When `before` is provided without `start`/`end`, cursor-based pagination
+    returns bars strictly older than the given UNIX timestamp.
     """
     actual_limit = min(limit, 5000)
 
     if timeframe not in MarketDatabase.INTERVAL_MAP:
         raise HTTPException(status_code=422, detail=f"Unsupported timeframe: {timeframe}")
+
+    if before is not None and start is None:
+        # Cursor mode: return bars strictly before the given timestamp
+        db = MarketDatabase()
+        try:
+            data = db.query_ohlc(
+                symbol=symbol,
+                timeframe=timeframe,
+                limit=actual_limit,
+                before=before,
+            )
+        finally:
+            db.close()
+        return JSONResponse(data)
 
     try:
         start_date = datetime.date.fromisoformat(start) if start else None

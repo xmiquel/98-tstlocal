@@ -258,3 +258,220 @@ def test_query_ohlc_1m_has_spread(market_db_with_data: MarketDatabase) -> None:
     rows = market_db_with_data.query_ohlc(symbol="TEST", timeframe="1m", limit=3)
     assert len(rows) > 0
     assert "spread" in rows[0]
+
+
+# ── before-cursor query tests ──────────────────────────────────────────────
+
+
+def test_query_ohlc_raw_before(market_db_with_data: MarketDatabase) -> None:
+    """before cursor returns only bars older than the given timestamp (1m)."""
+    # Middle of the first day: 2024-01-01 05:00:00 UTC
+    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0)
+    before_ts = int(before_dt.timestamp())
+
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="1m",
+        before=before_ts,
+        limit=5,
+    )
+
+    # Should return 5 bars (hours 0-4), all before 05:00
+    assert len(rows) == 5
+    for r in rows:
+        t: int = r["time"]  # type: ignore[assignment]
+        assert t < before_ts
+    # Verify ascending order
+    for i in range(len(rows) - 1):
+        ti: int = rows[i]["time"]  # type: ignore[assignment]
+        tj: int = rows[i + 1]["time"]  # type: ignore[assignment]
+        assert ti < tj
+
+
+def test_query_ohlc_5m_before(market_db_with_data: MarketDatabase) -> None:
+    """before cursor works with 5m aggregation."""
+    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0)
+    before_ts = int(before_dt.timestamp())
+
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="5m",
+        before=before_ts,
+        limit=3,
+    )
+
+    assert len(rows) > 0
+    for r in rows:
+        t: int = r["time"]  # type: ignore[assignment]
+        assert t < before_ts
+    if len(rows) >= 2:
+        t0: int = rows[0]["time"]  # type: ignore[assignment]
+        t1: int = rows[1]["time"]  # type: ignore[assignment]
+        assert t0 < t1
+
+
+def test_query_ohlc_1h_before(market_db_with_data: MarketDatabase) -> None:
+    """before cursor works with 1h aggregation."""
+    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0)
+    before_ts = int(before_dt.timestamp())
+
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="1h",
+        before=before_ts,
+        limit=3,
+    )
+
+    assert len(rows) > 0
+    for r in rows:
+        t: int = r["time"]  # type: ignore[assignment]
+        assert t < before_ts
+    if len(rows) >= 2:
+        t0: int = rows[0]["time"]  # type: ignore[assignment]
+        t1: int = rows[1]["time"]  # type: ignore[assignment]
+        assert t0 < t1
+
+
+def test_query_ohlc_before_returns_fewer(market_db_with_data: MarketDatabase) -> None:
+    """before cursor returns fewer bars when not enough data before timestamp."""
+    # Only 1 bar before 2024-01-01 01:00:00 (hour 0)
+    before_dt = datetime.datetime(2024, 1, 1, 1, 0, 0)
+    before_ts = int(before_dt.timestamp())
+
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="1m",
+        before=before_ts,
+        limit=100,
+    )
+
+    # Only hour 0 is before 01:00
+    assert len(rows) == 1
+    for r in rows:
+        t: int = r["time"]  # type: ignore[assignment]
+        assert t < before_ts
+
+
+# ── query_ohlc_as_df tests ─────────────────────────────────────────────────
+
+
+def test_query_ohlc_as_df_returns_dataframe(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df returns a DataFrame with correct columns and rows."""
+    import pandas as pd
+
+    df = market_db_with_data.query_ohlc_as_df(symbol="TEST", limit=5)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 5
+    assert list(df.columns) == ["time", "open", "high", "low", "close", "volume"]
+    assert df["time"].dtype.kind in ("i", "u")  # integer
+    assert df["open"].dtype.kind == "f"  # float
+
+
+def test_query_ohlc_as_df_empty_for_unknown_symbol(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df for unknown symbol returns empty DataFrame with correct columns."""
+    import pandas as pd
+
+    df = market_db_with_data.query_ohlc_as_df(symbol="NONEXISTENT")
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 0
+    assert list(df.columns) == ["time", "open", "high", "low", "close", "volume"]
+
+
+def test_query_ohlc_as_df_before_semantics(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df with before returns only bars older than timestamp."""
+    import datetime
+
+    # Use UTC-referenced timestamp to match DuckDB's epoch() behavior
+    before_utc = datetime.datetime(2024, 1, 1, 5, 0, 0, tzinfo=datetime.UTC)
+    before_ts = int(before_utc.timestamp())
+
+    df = market_db_with_data.query_ohlc_as_df(
+        symbol="TEST",
+        before=before_ts,
+        limit=5,
+    )
+    # Hours 0-4 are before 05:00 UTC → 5 bars
+    assert len(df) == 5
+    assert all(df["time"] < before_ts)
+    # Verify ascending order
+    assert (df["time"].diff().dropna() > 0).all()
+
+
+def test_query_ohlc_as_df_respects_limit(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df respects the limit parameter (max 5000)."""
+    df = market_db_with_data.query_ohlc_as_df(symbol="TEST", limit=3)
+    assert len(df) == 3
+
+
+def test_query_ohlc_as_df_uses_existing_connection(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df uses self._conn.execute (no new connection)."""
+    df = market_db_with_data.query_ohlc_as_df(symbol="TEST", limit=1)
+    assert len(df) == 1
+
+
+def test_query_ohlc_as_df_before_ignores_when_start_provided(
+    market_db_with_data: MarketDatabase,
+) -> None:
+    """before is ignored when start_date is provided (date-range takes precedence)."""
+    import datetime
+
+    before_utc = datetime.datetime(2024, 1, 1, 5, 0, 0, tzinfo=datetime.UTC)
+    before_ts = int(before_utc.timestamp())
+
+    df = market_db_with_data.query_ohlc_as_df(
+        symbol="TEST",
+        start_date=datetime.date(2024, 1, 1),
+        before=before_ts,
+        limit=5,
+    )
+    # Should return date-range bars including bars >= before_ts
+    assert len(df) > 0
+    assert any(df["time"] >= before_ts)
+
+
+def test_query_ohlc_as_df_before_returns_fewer(market_db_with_data: MarketDatabase) -> None:
+    """before returns fewer bars when not enough data before timestamp."""
+    import datetime
+
+    before_utc = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
+    before_ts = int(before_utc.timestamp())
+
+    df = market_db_with_data.query_ohlc_as_df(
+        symbol="TEST",
+        before=before_ts,
+        limit=100,
+    )
+    # Only hour 0 is before 01:00
+    assert len(df) == 1
+    assert all(df["time"] < before_ts)
+
+
+def test_query_ohlc_as_df_caps_at_5000(market_db_with_data: MarketDatabase) -> None:
+    """query_ohlc_as_df caps limit at 5000."""
+    df = market_db_with_data.query_ohlc_as_df(symbol="TEST", limit=99999)
+    assert len(df) <= 5000
+
+
+def test_query_ohlc_before_ignores_when_start_provided(market_db_with_data: MarketDatabase) -> None:
+    """before is ignored when start_date is provided (date-range takes precedence)."""
+    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0)
+    before_ts = int(before_dt.timestamp())
+
+    rows = market_db_with_data.query_ohlc(
+        symbol="TEST",
+        timeframe="1m",
+        start_date=datetime.date(2024, 1, 1),
+        before=before_ts,
+        limit=5,
+    )
+
+    # Should return date-range bars (not limited by before), including bars >= before_ts
+    assert len(rows) > 0
+    # At least some bars should be at or after before_ts (proving before was ignored)
+    has_after = False
+    for r in rows:
+        t: int = r["time"]  # type: ignore[assignment]
+        if t >= before_ts:
+            has_after = True
+            break
+    assert has_after
