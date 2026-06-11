@@ -266,7 +266,7 @@ def test_query_ohlc_1m_has_spread(market_db_with_data: MarketDatabase) -> None:
 def test_query_ohlc_raw_before(market_db_with_data: MarketDatabase) -> None:
     """before cursor returns only bars older than the given timestamp (1m)."""
     # Middle of the first day: 2024-01-01 05:00:00 UTC
-    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0)
+    before_dt = datetime.datetime(2024, 1, 1, 5, 0, 0, tzinfo=datetime.UTC)
     before_ts = int(before_dt.timestamp())
 
     rows = market_db_with_data.query_ohlc(
@@ -335,7 +335,7 @@ def test_query_ohlc_1h_before(market_db_with_data: MarketDatabase) -> None:
 def test_query_ohlc_before_returns_fewer(market_db_with_data: MarketDatabase) -> None:
     """before cursor returns fewer bars when not enough data before timestamp."""
     # Only 1 bar before 2024-01-01 01:00:00 (hour 0)
-    before_dt = datetime.datetime(2024, 1, 1, 1, 0, 0)
+    before_dt = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
     before_ts = int(before_dt.timestamp())
 
     rows = market_db_with_data.query_ohlc(
