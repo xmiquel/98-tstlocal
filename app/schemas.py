@@ -59,19 +59,29 @@ class CatalogEntry(BaseModel):
 
 
 class IndicatorRequest(BaseModel):
-    """Request model for POST /api/indicators/calculate."""
+    """Request model for POST /api/indicators/calculate.
+
+    If `data` is provided, it is used directly instead of querying the DB.
+    This allows the frontend to send its full accumulated dataset (including
+    prepended historical candles from infinite scroll) for accurate recalculation.
+    """
 
     symbol: str
     timeframe: str = "1m"
     indicator: str
     params: dict[str, float | int | str] = {}
+    data: list[dict[str, float | int]] | None = None
 
 
 class IndicatorValue(BaseModel):
-    """A single time-value pair for indicator output."""
+    """A single time-value pair for indicator output.
+
+    Value can be null for initial periods where the indicator hasn't
+    accumulated enough data (e.g., first 19 candles for SMA(20)).
+    """
 
     time: int
-    value: float
+    value: float | None = None
 
 
 class IndicatorResult(BaseModel):

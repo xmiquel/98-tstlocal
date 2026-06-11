@@ -31,8 +31,9 @@ def get_catalog() -> list[dict[str, Any]]:
 def calculate_indicator(request: IndicatorRequest) -> JSONResponse:
     """Calculate the requested indicator for the given symbol and parameters.
 
-    Loads OHLCV data via MarketDatabase, runs the indicator through
-    IndicatorEngine, and returns the computed values.
+    If `request.data` is provided, uses it directly (frontend's accumulated
+    dataset from infinite scroll). Otherwise queries the DB (fallback for
+    initial load or when called without full data).
     """
     # Validate that the indicator exists in the catalog
     indicator_names = {entry["name"] for entry in CATALOG}
@@ -42,14 +43,29 @@ def calculate_indicator(request: IndicatorRequest) -> JSONResponse:
             detail=f"Unknown indicator: {request.indicator}",
         )
 
-    db = MarketDatabase()
-    try:
-        df = db.query_ohlc_as_df(
-            symbol=request.symbol,
-            timeframe=request.timeframe,
-        )
-    finally:
-        db.close()
+    import pandas as pd
+
+    # Use provided data or query DB
+    if request.data:
+        df = pd.DataFrame(request.data)
+        # Ensure required columns exist
+        required = {"time", "open", "high", "low", "close", "volume"}
+        if not required.issubset(df.columns):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Provided data missing required columns: {required - set(df.columns)}",
+            )
+        # Sort by time to be safe
+        df = df.sort_values("time").reset_index(drop=True)
+    else:
+        db = MarketDatabase()
+        try:
+            df = db.query_ohlc_as_df(
+                symbol=request.symbol,
+                timeframe=request.timeframe,
+            )
+        finally:
+            db.close()
 
     if df.empty:
         return JSONResponse({"label": f"{request.indicator}(...)", "values": []})
@@ -63,5 +79,5 @@ def calculate_indicator(request: IndicatorRequest) -> JSONResponse:
     )
 
     # Return the first result line (single-line indicators return one entry;
-    # multi-line indicators return multiple — the frontend PR will extend this)
+    # multi-line indicators return multiple)
     return JSONResponse(results[0])

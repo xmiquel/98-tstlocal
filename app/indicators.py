@@ -112,15 +112,6 @@ def _make_cache_key(
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _drop_nans(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter out entries where value is NaN or None."""
-    return [
-        v
-        for v in values
-        if v["value"] is not None and not (isinstance(v["value"], float) and pd.isna(v["value"]))
-    ]
-
-
 class IndicatorEngine:
     """Computes technical indicators using pandas-ta-classic with TTLCache.
 
@@ -208,11 +199,14 @@ class IndicatorEngine:
         times: pd.Series,
         label: str,
     ) -> list[dict[str, Any]]:
-        """Convert a single pandas_ta Series to a result list with one entry."""
+        """Convert a single pandas_ta Series to a result list with one entry.
+
+        Keeps NaN entries as null so the output length matches the input candles.
+        Lightweight Charts renders null as gaps, preserving time alignment.
+        """
         values = [
-            {"time": int(t), "value": float(v)}
+            {"time": int(t), "value": float(v) if not pd.isna(v) else None}
             for t, v in zip(times, series, strict=False)
-            if not pd.isna(v)
         ]
         return [{"label": label, "values": values}]
 
@@ -236,9 +230,10 @@ class IndicatorEngine:
                 line_label = "MACD"
 
             series = macd_df[col]
-            values = _drop_nans(
-                [{"time": int(t), "value": float(v)} for t, v in zip(times, series, strict=False)]
-            )
+            values = [
+                {"time": int(t), "value": float(v) if not pd.isna(v) else None}
+                for t, v in zip(times, series, strict=False)
+            ]
             lines.append({"label": line_label, "values": values})
         return lines
 
@@ -268,8 +263,9 @@ class IndicatorEngine:
                 continue  # skip BBB, BBP
 
             series = bb_df[col]
-            values = _drop_nans(
-                [{"time": int(t), "value": float(v)} for t, v in zip(times, series, strict=False)]
-            )
+            values = [
+                {"time": int(t), "value": float(v) if not pd.isna(v) else None}
+                for t, v in zip(times, series, strict=False)
+            ]
             lines.append({"label": line_label, "values": values})
         return lines

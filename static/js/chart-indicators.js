@@ -240,11 +240,13 @@
     }
 
     var chartParams = window.chartApi.getCurrentParams();
+    var allData = window.chartApi.getAllData ? window.chartApi.getAllData() : [];
     var body = JSON.stringify({
       symbol: chartParams ? chartParams.symbol : "",
       timeframe: chartParams ? chartParams.timeframe : "1m",
       indicator: indicator,
       params: params,
+      data: allData,
     });
 
     fetch("/api/indicators/calculate", {
@@ -285,7 +287,9 @@
       return;
     }
 
-    console.log("[Indicators] reloadAll for", symbol, timeframe, "-", activeOverlays.length, "overlays");
+    // Get full accumulated data from chart (includes prepended older candles)
+    var allData = window.chartApi.getAllData ? window.chartApi.getAllData() : [];
+    console.log("[Indicators] reloadAll for", symbol, timeframe, "-", activeOverlays.length, "overlays, data points:", allData.length);
 
     for (var i = 0; i < activeOverlays.length; i++) {
       (function (overlay) {
@@ -294,6 +298,7 @@
           timeframe: timeframe,
           indicator: overlay.indicator,
           params: overlay.params,
+          data: allData, // Send full dataset for accurate recalculation
         });
         fetch("/api/indicators/calculate", {
           method: "POST",
@@ -402,6 +407,9 @@
       var configs = JSON.parse(saved);
       if (!Array.isArray(configs) || configs.length === 0) return;
 
+      // Get full accumulated data from chart
+      var allData = window.chartApi.getAllData ? window.chartApi.getAllData() : [];
+
       for (var i = 0; i < configs.length; i++) {
         (function (config) {
           var body = JSON.stringify({
@@ -409,6 +417,7 @@
             timeframe: timeframe,
             indicator: config.indicator,
             params: config.params,
+            data: allData,
           });
           fetch("/api/indicators/calculate", {
             method: "POST",
