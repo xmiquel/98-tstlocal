@@ -28,6 +28,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-playwright" },
     { name = "ruff" },
+    { name = "types-cachetools" },
 ]
 
 [package.metadata]
@@ -53,6 +54,7 @@ dev = [
     { name = "pytest-cov", specifier = "~=7.1" },
     { name = "pytest-playwright", specifier = ">=0.8.0" },
     { name = "ruff", specifier = "~=0.15.16" },
+    { name = "types-cachetools", specifier = ">=0.1.0" },
 ]
 
 [[package]]
@@ -872,6 +874,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/a3/1585216310e344e8102c22482f6060c7a6ea0322b63e026372e6dcefcfd6/truststore-0.10.4.tar.gz", hash = "sha256:9d91bd436463ad5e4ee4aba766628dd6cd7010cf3e2461756b3303710eebc301", size = 26169, upload-time = "2025-08-12T18:49:02.73Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/19/97/56608b2249fe206a67cd573bc93cd9896e1efb9e98bce9c163bcdc704b88/truststore-0.10.4-py3-none-any.whl", hash = "sha256:adaeaecf1cbb5f4de3b1959b42d41f6fab57b2b1666adb59e89cb0b53361d981", size = 18660, upload-time = "2025-08-12T18:49:01.46Z" },
+]
+
+[[package]]
+name = "types-cachetools"
+version = "7.0.0.20260518"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/14/1e4fca2b250dbc75be9f0beab083acb3cd1151711e1031eb4a854dfd71be/types_cachetools-7.0.0.20260518.tar.gz", hash = "sha256:7730014e4fef0c6f01e2cd0f980f8ce6d1b1d2472c8459c1f382348ec1a6b435", size = 10072, upload-time = "2026-05-18T06:02:20.396Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/e0/767be6b60859fd2edc4512fabdedbce703fc8d4ec5007b31abaf37a51c6c/types_cachetools-7.0.0.20260518-py3-none-any.whl", hash = "sha256:997b356870915f8bbc9b2cdb4e7271c01d487996fdac2a9c8e91cc5b1261b3d1", size = 9500, upload-time = "2026-05-18T06:02:19.042Z" },
 ]
 
 [[package]]
