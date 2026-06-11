@@ -30,8 +30,10 @@
 
   var series = chart.addCandlestickSeries();
 
-  // Store raw data for tooltip lookup (Lightweight Charts strips custom props)
-  var rawData = [];
+  // Accumulates ALL bars across fetches (for tooltip and infinite scroll)
+  let allData = [];
+  var loading = false;
+  var fetchCount = 0; // Counter for E2E tests
 
   // --- Custom tooltip ---
   var tooltip = document.getElementById("chart-tooltip");
@@ -42,16 +44,16 @@
       return;
     }
     // param.time is a UTC timestamp in seconds (business day based for daily, but fine for intraday)
-    // Find matching data point in rawData by time
+    // Find matching data point in allData by time
     var data = null;
-    if (rawData.length > 0) {
+    if (allData.length > 0) {
       // param.time can be number (seconds) or object {year, month, day}
       var targetTime = typeof param.time === "number" ? param.time : null;
       if (targetTime) {
         // Find closest data point by time (exact match for 1m, nearest for others)
-        for (var i = 0; i < rawData.length; i++) {
-          if (rawData[i].time === targetTime) {
-            data = rawData[i];
+        for (var i = 0; i < allData.length; i++) {
+          if (allData[i].time === targetTime) {
+            data = allData[i];
             break;
           }
         }
@@ -114,32 +116,64 @@
   // --- Reload callbacks (for chart-indicators.js etc.) ---
   var reloadCallbacks = [];
 
-  function buildUrl(sym, tf, lim, st, en) {
+  function buildUrl(sym, tf, lim, st, en, before) {
     let url = "/api/ohlc?symbol=" + encodeURIComponent(sym);
     url += "&timeframe=" + encodeURIComponent(tf);
     url += "&limit=" + lim;
     if (st) url += "&start=" + encodeURIComponent(st);
     if (en) url += "&end=" + encodeURIComponent(en);
+    if (before) url += "&before=" + encodeURIComponent(before);
     return url;
   }
 
-  function loadData(sym, tf, lim, st, en) {
-    var url = buildUrl(sym, tf, lim, st, en);
+  function loadData(sym, tf, lim, st, en, before) {
+    var url = buildUrl(sym, tf, lim, st, en, before);
     fetch(url)
       .then(function (r) {
         return r.json();
       })
       .then(function (data) {
-        rawData = data; // Keep reference for tooltip lookup
-        series.setData(data);
-        chart.timeScale().fitContent();
+        if (before) {
+          // Cursor mode: dedup and prepend to existing data
+          var existingTimes = new Set(
+            allData.map(function (d) {
+              return d.time;
+            })
+          );
+          var newBars = [];
+          for (var i = 0; i < data.length; i++) {
+            if (!existingTimes.has(data[i].time)) {
+              newBars.push(data[i]);
+            }
+          }
+          allData = newBars.concat(allData);
+          series.setData(allData);
+          // Restore scroll position to prevent visual jump
+          var visibleRange = chart.timeScale().getVisibleLogicalRange();
+          if (visibleRange) {
+            chart.timeScale().setVisibleLogicalRange({
+              from: visibleRange.from + newBars.length,
+              to: visibleRange.to + newBars.length,
+            });
+          }
+        } else {
+          // Reload mode: replace all data
+          allData = data;
+          series.setData(allData);
+          chart.timeScale().fitContent();
+        }
+        fetchCount++;
+        window.allDataLength = allData.length;
+        window.__fetchCount = fetchCount;
         // Notify registered callbacks that new data was loaded
         for (var i = 0; i < reloadCallbacks.length; i++) {
           reloadCallbacks[i](sym, tf, lim, st, en);
         }
+        loading = false;
       })
       .catch(function (err) {
         console.error("Failed to load OHLCV data:", err);
+        loading = false;
       });
   }
 
@@ -152,19 +186,54 @@
     config.end
   );
 
-  // Re-fetch on form submit (date change)
-  document
-    .getElementById("chart-controls")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-      var form = e.target;
+  // --- Infinite scroll: lazy load on pan-left ---
+  chart
+    .timeScale()
+    .subscribeVisibleLogicalRangeChange(function (range) {
+      if (!range || loading) return;
+      var barsInfo = series.barsInLogicalRange(range);
+      if (
+        !barsInfo ||
+        barsInfo.barsBefore === undefined ||
+        barsInfo.barsBefore >= 50
+      )
+        return;
+      if (barsInfo.barsBefore <= 0) return;
+      loading = true;
+      var form = document.getElementById("chart-controls");
+      if (!form) {
+        loading = false;
+        return;
+      }
       var sym = form.querySelector("[name=symbol]").value;
       var tf = form.querySelector("[name=timeframe]").value;
-      var lim = form.querySelector("[name=limit]").value;
-      var st = form.querySelector("[name=start]").value;
-      var en = form.querySelector("[name=end]").value;
-      loadData(sym, tf, parseInt(lim, 10) || 200, st, en);
+      var lim = parseInt(form.querySelector("[name=limit]").value, 10) || 200;
+      var oldestTs = allData.length > 0 ? allData[0].time : null;
+      if (oldestTs === null) {
+        loading = false;
+        return;
+      }
+      loadData(sym, tf, lim, null, null, oldestTs);
     });
+
+  // --- Auto-load on selector change ---
+  var form = document.getElementById("chart-controls");
+  if (form) {
+    var selectorNames = ["symbol", "timeframe", "start", "end"];
+    selectorNames.forEach(function (name) {
+      var el = form.querySelector("[name=" + name + "]");
+      if (el) {
+        el.addEventListener("change", function () {
+          var sym = form.querySelector("[name=symbol]").value;
+          var tf = form.querySelector("[name=timeframe]").value;
+          var lim = parseInt(form.querySelector("[name=limit]").value, 10) || 200;
+          var st = form.querySelector("[name=start]").value;
+          var en = form.querySelector("[name=end]").value;
+          loadData(sym, tf, lim, st, en);
+        });
+      }
+    });
+  }
 
   // --- Public API for chart-indicators.js ---
   function getCurrentParams() {
@@ -192,5 +261,8 @@
       }
     },
     getCurrentParams: getCurrentParams,
+    getAllData: function () {
+      return allData;
+    },
   };
 })();
