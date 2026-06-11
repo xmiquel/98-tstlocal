@@ -26,6 +26,7 @@ dev = [
     "pre-commit~=4.6",
     "pytest-playwright>=0.8.0",
     "types-cachetools>=0.1.0",
+    "pandas-stubs>=2.2.0",
 ]
 
 [tool.uv]

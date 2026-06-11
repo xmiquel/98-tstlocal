@@ -196,7 +196,7 @@ class TestIndicatorEngine:
         WHEN calculate() is called
         THEN pandas-ta-classic SHALL be called (cache miss)
         """
-        import pandas_ta_classic as ta
+        import pandas_ta_classic as ta  # type: ignore[import-untyped]
         from cachetools import TTLCache
 
         # TTLCache resolves the timer function at import time, so global

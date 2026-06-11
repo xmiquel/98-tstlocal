@@ -12,7 +12,7 @@ import json
 from typing import Any
 
 import pandas as pd
-import pandas_ta_classic as ta
+import pandas_ta_classic as ta  # type: ignore[import-untyped]
 from cachetools import TTLCache
 
 # Static catalog of supported indicators with their parameters.
